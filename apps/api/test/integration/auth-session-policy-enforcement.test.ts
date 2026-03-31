@@ -55,7 +55,7 @@ describe('Auth session policy enforcement — Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    securityService = new SecurityService();
+    securityService = new SecurityService(mockDb as any);
     mockDb = createMockDb();
 
     mockPermissionsService = {

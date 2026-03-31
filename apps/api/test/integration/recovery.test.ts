@@ -105,7 +105,8 @@ describe('Password Recovery — Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = createRecoveryMockDb();
-    passwordService = new PasswordService(mockDb as any);
+    const mockEmailService = { sendPasswordResetEmail: vi.fn() };
+    passwordService = new PasswordService(mockDb as any, mockEmailService as any);
   });
 
   // ─── Full recovery flow ─────────────────────────────────────────────────
@@ -203,7 +204,7 @@ describe('Password Recovery — Integration', () => {
         }),
       });
 
-      const expiredService = new PasswordService(expiredDb as any);
+      const expiredService = new PasswordService(expiredDb as any, { sendPasswordResetEmail: vi.fn() } as any);
       const result = await expiredService.verifyRecoveryToken('expired-token');
       expect(result.valid).toBe(false);
     });
@@ -230,7 +231,7 @@ describe('Password Recovery — Integration', () => {
         }),
       });
 
-      const usedService = new PasswordService(usedDb as any);
+      const usedService = new PasswordService(usedDb as any, { sendPasswordResetEmail: vi.fn() } as any);
       const result = await usedService.verifyRecoveryToken('used-token');
       expect(result.valid).toBe(false);
     });
@@ -248,7 +249,7 @@ describe('Password Recovery — Integration', () => {
         }),
       });
 
-      const invalidService = new PasswordService(invalidDb as any);
+      const invalidService = new PasswordService(invalidDb as any, { sendPasswordResetEmail: vi.fn() } as any);
       const result = await invalidService.verifyRecoveryToken('totally-invalid-token');
       expect(result.valid).toBe(false);
     });
@@ -267,7 +268,7 @@ describe('Password Recovery — Integration', () => {
         }),
       });
 
-      const unknownService = new PasswordService(unknownDb as any);
+      const unknownService = new PasswordService(unknownDb as any, { sendPasswordResetEmail: vi.fn() } as any);
       const result = await unknownService.requestRecovery('nobody@test.com', '1.1.1.1', 'UA');
       expect(result).toBeNull();
     });

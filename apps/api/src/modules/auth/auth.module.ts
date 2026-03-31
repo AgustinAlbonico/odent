@@ -22,7 +22,6 @@ import { SessionPolicyModule } from '../session-policy/session-policy.module.js'
     PasswordModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',
-      signOptions: { expiresIn: '15m' },
     }),
   ],
   controllers: [AuthController, AbilitiesController],
@@ -31,7 +30,7 @@ import { SessionPolicyModule } from '../session-policy/session-policy.module.js'
     AuthGuard,
     {
       provide: APP_GUARD,
-      useExisting: AuthGuard,
+      useClass: AuthGuard,
     },
   ],
   exports: [AuthService],

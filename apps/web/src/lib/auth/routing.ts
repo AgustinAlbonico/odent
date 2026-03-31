@@ -32,6 +32,7 @@ const PROTECTED_ROUTE_POLICIES: ProtectedRoutePolicy[] = [
     anyOf: [{ module: Module.DASHBOARD, actions: [Action.VIEW_MODULE] }],
   },
   { path: '/security', authOnly: true },
+  { path: '/security/perfil', authOnly: true },
   {
     path: '/settings',
     anyOf: [{ module: Module.SYSTEM_CONFIG, actions: [Action.ADMIN_POLICIES] }],
@@ -55,13 +56,17 @@ const PROTECTED_ROUTE_POLICIES: ProtectedRoutePolicy[] = [
       },
     ],
   },
+  {
+    path: '/users',
+    anyOf: [{ module: Module.USERS_ROLES_PERMISSIONS, actions: [Action.ADMIN_USERS] }],
+  },
 ];
 
 const LANDING_PRIORITY_BY_ROLE: Record<string, string[]> = {
-  [BaseRole.ADMIN]: ['/settings', '/sessions', '/audit', '/permission-reviews', '/dashboard', '/security'],
-  [BaseRole.PROFESIONAL]: ['/dashboard', '/security', '/audit', '/settings', '/sessions', '/permission-reviews'],
-  [BaseRole.ASISTENTE]: ['/dashboard', '/security', '/sessions', '/settings', '/audit', '/permission-reviews'],
-  [BaseRole.PROFESIONAL_SUPERVISOR]: ['/dashboard', '/security', '/audit', '/sessions', '/settings', '/permission-reviews'],
+  [BaseRole.ADMIN]: ['/settings', '/sessions', '/audit', '/users', '/permission-reviews', '/dashboard', '/security'],
+  [BaseRole.PROFESIONAL]: ['/dashboard', '/security', '/audit', '/settings', '/sessions', '/users', '/permission-reviews'],
+  [BaseRole.ASISTENTE]: ['/dashboard', '/security', '/sessions', '/settings', '/audit', '/users', '/permission-reviews'],
+  [BaseRole.PROFESIONAL_SUPERVISOR]: ['/dashboard', '/security', '/audit', '/sessions', '/settings', '/users', '/permission-reviews'],
 };
 
 function hasAbility(

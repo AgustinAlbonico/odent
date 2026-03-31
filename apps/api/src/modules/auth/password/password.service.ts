@@ -13,13 +13,23 @@ import { users, passwordRecoveryTokens, sessions, auditEvents } from '../../../i
 import { AuditEventType } from '@sistema-odontologico/audit-core';
 import { sql } from 'drizzle-orm';
 import { SecurityService } from '../../security/security.service.js';
+import { EmailService } from '../email/email.service.js';
 
 @Injectable()
 export class PasswordService {
   constructor(
     private readonly dbService: DatabaseService,
+    private readonly emailService: EmailService,
     @Optional() private readonly securityService?: SecurityService,
   ) {}
+
+  /**
+   * Check if SMTP is configured.
+   */
+  private isSmtpConfigured(): boolean {
+    const host = process.env.SMTP_HOST;
+    return host !== undefined && host !== '';
+  }
 
   /**
    * Request password recovery.
@@ -48,8 +58,13 @@ export class PasswordService {
     // Audit
     await this.recordAudit(user.id, user.email, AuditEventType.RECOVERY_REQUESTED, ipAddress, userAgent, {});
 
-    // In production, send email with link containing rawToken
-    // For now, return the token directly (dev only)
+    if (this.isSmtpConfigured()) {
+      // Send email with reset link
+      await this.emailService.sendPasswordResetEmail(user.email, rawToken);
+      return null;
+    }
+
+    // Dev mode: return token directly when no SMTP configured
     return rawToken;
   }
 
@@ -147,7 +162,7 @@ export class PasswordService {
       .set({ closedAt: new Date(), closeReason: 'password_reset' })
       .where(eq(sessions.userId, verification.userId));
 
-    this.securityService?.clearFailedAttempts(user.email);
+    this.securityService?.resetFailedAttempts(user.email);
 
     await this.recordAudit(user.id, user.email, AuditEventType.RECOVERY_COMPLETED, ipAddress, userAgent, {});
 
@@ -222,7 +237,7 @@ export class PasswordService {
       })
       .where(eq(users.id, userId));
 
-    this.securityService?.clearFailedAttempts(user.email);
+    await this.securityService?.resetFailedAttempts(user.email);
 
     // Close all existing sessions (force re-login)
     await this.dbService.db
@@ -261,7 +276,7 @@ export class PasswordService {
       })
       .where(eq(users.id, userId));
 
-    this.securityService?.clearFailedAttempts(user.email);
+    await this.securityService?.resetFailedAttempts(user.email);
 
     await this.recordAudit(actor.sub, actor.email, AuditEventType.ACCOUNT_UNLOCKED, ipAddress, userAgent, {
       targetUserId: user.id,

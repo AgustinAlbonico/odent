@@ -1,0 +1,158 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+  - alert [ref=e31]
+  - generic [ref=e32]:
+    - complementary [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: DentalSoft
+        - button "Colapsar sidebar" [ref=e36]:
+          - img [ref=e37]
+      - navigation [ref=e39]:
+        - list [ref=e40]:
+          - listitem [ref=e41]:
+            - link "Dashboard" [ref=e42] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e43]
+              - generic [ref=e48]: Dashboard
+          - listitem [ref=e49]:
+            - link "Pacientes" [ref=e50] [cursor=pointer]:
+              - /url: /patients
+              - img [ref=e51]
+              - generic [ref=e56]: Pacientes
+          - listitem [ref=e57]:
+            - link "Turnos" [ref=e58] [cursor=pointer]:
+              - /url: /appointments
+              - img [ref=e59]
+              - generic [ref=e61]: Turnos
+          - listitem [ref=e62]:
+            - link "Odontograma" [ref=e63] [cursor=pointer]:
+              - /url: /odontogram
+              - img [ref=e64]
+              - generic [ref=e67]: Odontograma
+          - listitem [ref=e68]:
+            - link "Plan de Tratamiento" [ref=e69] [cursor=pointer]:
+              - /url: /treatment-plans
+              - img [ref=e70]
+              - generic [ref=e73]: Plan de Tratamiento
+          - listitem [ref=e74]:
+            - link "Prácticas" [ref=e75] [cursor=pointer]:
+              - /url: /procedures
+              - img [ref=e76]
+              - generic [ref=e80]: Prácticas
+          - listitem [ref=e81]:
+            - link "Facturación" [ref=e82] [cursor=pointer]:
+              - /url: /billing
+              - img [ref=e83]
+              - generic [ref=e85]: Facturación
+          - listitem [ref=e86]:
+            - link "Contabilidad" [ref=e87] [cursor=pointer]:
+              - /url: /accounting
+              - img [ref=e88]
+              - generic [ref=e90]: Contabilidad
+          - listitem [ref=e91]:
+            - link "Clínica" [ref=e92] [cursor=pointer]:
+              - /url: /clinic
+              - img [ref=e93]
+              - generic [ref=e97]: Clínica
+          - listitem [ref=e98]:
+            - link "Usuarios" [ref=e99] [cursor=pointer]:
+              - /url: /users
+              - img [ref=e100]
+              - generic [ref=e105]: Usuarios
+          - listitem [ref=e106]:
+            - link "Roles" [ref=e107] [cursor=pointer]:
+              - /url: /roles
+              - img [ref=e108]
+              - generic [ref=e110]: Roles
+          - listitem [ref=e111]:
+            - link "Configuración" [ref=e112] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e113]
+              - generic [ref=e116]: Configuración
+      - generic [ref=e117]:
+        - generic [ref=e118]:
+          - paragraph [ref=e119]: admin@demo.com
+          - paragraph [ref=e120]: admin@demo.com
+        - button "Cerrar sesión" [ref=e121]:
+          - img [ref=e122]
+          - generic [ref=e125]: Cerrar sesión
+    - generic [ref=e126]:
+      - banner [ref=e127]:
+        - navigation "Breadcrumb" [ref=e129]: Inicio
+        - generic [ref=e130]:
+          - button "Modo oscuro" [ref=e131]:
+            - img [ref=e132]
+          - button "Notificaciones" [ref=e134]:
+            - img [ref=e135]
+          - generic "admin@demo.com" [ref=e138]: A
+      - main [ref=e139]:
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - img [ref=e143]
+              - text: Panel principal
+            - heading "Bienvenido, admin@demo.com" [level=1] [ref=e148]
+            - paragraph [ref=e149]: Este dashboard concentra el estado de acceso actual y los controles sensibles ya conectados en runtime.
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - generic [ref=e152]:
+                - paragraph [ref=e153]: Sesión activa
+                - heading "admin@demo.com" [level=3] [ref=e154]
+              - paragraph [ref=e156]: "Rol base: admin"
+            - generic [ref=e157]:
+              - generic [ref=e158]:
+                - paragraph [ref=e159]: Institución
+                - heading "67e6d0f0-d6f6-4c97-8d75-2a30883bf5b1" [level=3] [ref=e160]
+              - paragraph [ref=e162]: La resolución de permisos y políticas corre sobre este tenant.
+            - generic [ref=e163]:
+              - generic [ref=e164]:
+                - paragraph [ref=e165]: Módulos visibles
+                - heading "17" [level=3] [ref=e166]
+              - paragraph [ref=e168]:
+                - text: Menú y acceso base calculados desde
+                - code [ref=e169]: /auth/abilities
+                - text: .
+          - generic [ref=e170]:
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - heading "Accesos habilitados" [level=3] [ref=e173]
+                - paragraph [ref=e174]: Resumen rápido de módulos actualmente visibles para esta sesión.
+              - generic [ref=e175]:
+                - generic [ref=e176]: Dashboard
+                - generic [ref=e177]: Pacientes
+                - generic [ref=e178]: Turnos
+                - generic [ref=e179]: caller
+                - generic [ref=e180]: Historia clínica
+                - generic [ref=e181]: Odontograma
+                - generic [ref=e182]: Recetas
+                - generic [ref=e183]: Presupuestos
+                - generic [ref=e184]: mutuals
+                - generic [ref=e185]: deposits
+                - generic [ref=e186]: Facturación
+                - generic [ref=e187]: Contabilidad
+                - generic [ref=e188]: Profesionales
+                - generic [ref=e189]: assistants
+                - generic [ref=e190]: Configuración
+                - generic [ref=e191]: Usuarios y permisos
+                - generic [ref=e192]: Auditoría
+            - generic [ref=e193]:
+              - generic [ref=e194]:
+                - heading "Controles sensibles" [level=3] [ref=e195]
+                - paragraph [ref=e196]: Wiring operativo que ya quedó vivo con esta remediación.
+              - generic [ref=e197]:
+                - generic [ref=e198]:
+                  - img [ref=e199]
+                  - generic [ref=e202]:
+                    - paragraph [ref=e203]: Políticas de sesión
+                    - paragraph [ref=e204]: Configuración disponible desde Ajustes con contrato backend real.
+                - generic [ref=e205]:
+                  - img [ref=e206]
+                  - generic [ref=e210]:
+                    - paragraph [ref=e211]: Crecimiento de profesionales
+                    - paragraph [ref=e212]: Create, activate y reactivate ya validan cupo institucional antes de continuar.
+                - generic [ref=e213]:
+                  - img [ref=e214]
+                  - generic [ref=e218]:
+                    - paragraph [ref=e219]: Separación de controles
+                    - paragraph [ref=e220]: Permisos, alcance y restricción por plan siguen evaluándose por capas separadas.

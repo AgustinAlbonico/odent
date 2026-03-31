@@ -1,4 +1,4 @@
-import { Action, BaseRole, Module, Scope } from './enums.js';
+import { Action, BaseRole, Module, Scope } from './enums';
 
 /**
  * A single permission entry — module + action + scope.

@@ -1,106 +1,118 @@
 import { Injectable } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
+import { DatabaseService } from '../../infra/database/database.service.js';
+import { users } from '../../infra/database/schema.js';
 
 /**
- * Unusual access detection parameters.
- */
-export interface AccessContext {
-  userId: string;
-  tenantId: string;
-  ipAddress: string;
-  userAgent: string;
-  timestamp: Date;
-}
-
-export interface UnusualAccessResult {
-  isUnusual: boolean;
-  reasons: string[];
-}
-
-/**
- * Security service — rate limiting, unusual access detection.
- * Uses stateless checks (no Redis in this version).
+ * Security service — brute-force lockout tracking backed by the database.
+ * Persists failed login attempts on the users table so state survives
+ * restarts and works across multiple instances.
  */
 @Injectable()
 export class SecurityService {
-  // In-memory rate limit store (per process; will migrate to Redis later)
-  private readonly failedAttempts = new Map<string, { count: number; lockedUntil: Date | null }>();
-  private readonly knownContexts = new Map<string, AccessContext[]>();
-
   private static readonly MAX_FAILED_ATTEMPTS = 5;
   private static readonly LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
+  constructor(private readonly dbService: DatabaseService) {}
+
+  /**
+   * Check if an account is currently locked.
+   * Returns the lock expiry time if locked, null otherwise.
+   * Automatically clears expired locks.
+   */
+  async getAccountLockStatus(email: string): Promise<Date | null> {
+    const [user] = await this.dbService.db
+      .select({ lockedUntil: users.lockedUntil })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user?.lockedUntil) return null;
+
+    // If lock has expired, clear it
+    if (new Date() > user.lockedUntil) {
+      await this.dbService.db
+        .update(users)
+        .set({ lockedUntil: null, failedLoginAttempts: 0 })
+        .where(eq(users.email, email));
+      return null;
+    }
+
+    return user.lockedUntil;
+  }
+
   /**
    * Record a failed login attempt.
-   * Returns whether the account should be temporarily locked.
+   * Returns { locked: boolean, attempts: number, lockedUntil?: Date }
    */
-  recordFailedAttempt(email: string): { locked: boolean; lockedUntil?: Date; count: number } {
-    const current = this.failedAttempts.get(email) ?? { count: 0, lockedUntil: null };
+  async recordFailedAttempt(email: string): Promise<{
+    locked: boolean;
+    attempts: number;
+    lockedUntil?: Date;
+  }> {
+    const [user] = await this.dbService.db
+      .select({
+        failedLoginAttempts: users.failedLoginAttempts,
+        lockedUntil: users.lockedUntil,
+      })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
 
-    current.count += 1;
-
-    if (current.count >= SecurityService.MAX_FAILED_ATTEMPTS) {
-      current.lockedUntil = new Date(Date.now() + SecurityService.LOCK_DURATION_MS);
-      this.failedAttempts.set(email, current);
-      return { locked: true, lockedUntil: current.lockedUntil, count: current.count };
+    if (!user) {
+      // User doesn't exist — return generic response to prevent enumeration
+      return { locked: false, attempts: 0 };
     }
 
-    this.failedAttempts.set(email, current);
-    return { locked: false, count: current.count };
+    // If currently locked, don't increment
+    if (user.lockedUntil && new Date() < user.lockedUntil) {
+      return { locked: true, attempts: user.failedLoginAttempts ?? 0, lockedUntil: user.lockedUntil };
+    }
+
+    const newAttempts = (user.failedLoginAttempts ?? 0) + 1;
+
+    if (newAttempts >= SecurityService.MAX_FAILED_ATTEMPTS) {
+      const lockedUntil = new Date(Date.now() + SecurityService.LOCK_DURATION_MS);
+
+      await this.dbService.db
+        .update(users)
+        .set({
+          failedLoginAttempts: newAttempts,
+          lockedUntil,
+        })
+        .where(eq(users.email, email));
+
+      return { locked: true, attempts: newAttempts, lockedUntil };
+    }
+
+    await this.dbService.db
+      .update(users)
+      .set({ failedLoginAttempts: newAttempts })
+      .where(eq(users.email, email));
+
+    return { locked: false, attempts: newAttempts };
   }
 
   /**
-   * Check if an email is currently locked out.
+   * Reset failed attempts after successful login.
    */
-  isLockedOut(email: string): boolean {
-    const entry = this.failedAttempts.get(email);
-    if (!entry?.lockedUntil) return false;
-
-    if (new Date() >= entry.lockedUntil) {
-      // Lock expired
-      this.failedAttempts.delete(email);
-      return false;
-    }
-
-    return true;
+  async resetFailedAttempts(email: string): Promise<void> {
+    await this.dbService.db
+      .update(users)
+      .set({ failedLoginAttempts: 0, lockedUntil: null })
+      .where(eq(users.email, email));
   }
 
   /**
-   * Clear failed attempts (after successful login or admin unlock).
+   * Get the number of remaining attempts before lockout.
    */
-  clearFailedAttempts(email: string): void {
-    this.failedAttempts.delete(email);
-  }
+  async getRemainingAttempts(email: string): Promise<number> {
+    const [user] = await this.dbService.db
+      .select({ failedLoginAttempts: users.failedLoginAttempts })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
 
-  /**
-   * Check if an access context is unusual.
-   * Simple heuristics: new IP, different user agent, etc.
-   */
-  checkUnusualAccess(context: AccessContext): UnusualAccessResult {
-    const reasons: string[] = [];
-    const key = `${context.tenantId}:${context.userId}`;
-    const history = this.knownContexts.get(key) ?? [];
-
-    if (history.length > 0) {
-      const knownIps = new Set(history.map((h) => h.ipAddress));
-      if (!knownIps.has(context.ipAddress)) {
-        reasons.push('new_ip_address');
-      }
-
-      const knownAgents = new Set(history.map((h) => h.userAgent));
-      if (!knownAgents.has(context.userAgent)) {
-        reasons.push('new_user_agent');
-      }
-    }
-
-    // Store context for future checks
-    history.push(context);
-    // Keep last 50 entries
-    if (history.length > 50) history.shift();
-    this.knownContexts.set(key, history);
-
-    return {
-      isUnusual: reasons.length > 0,
-      reasons,
-    };
+    return Math.max(0, SecurityService.MAX_FAILED_ATTEMPTS - (user?.failedLoginAttempts ?? 0));
   }
 }

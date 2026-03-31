@@ -37,10 +37,6 @@ export class AuthService {
     LoginResult & {
       accessToken?: string;
       refreshToken?: string;
-      securityNotice?: {
-        code: 'unusual_access_detected';
-        reasons: string[];
-      };
     }
   > {
     const tenant = await this.tenantService.resolveTenant(tenantId);
@@ -57,11 +53,12 @@ export class AuthService {
 
     const user = userRows[0];
     if (!user) {
-      this.securityService.recordFailedAttempt(email);
+      await this.securityService.recordFailedAttempt(email);
       return { success: false, reason: 'invalid_credentials' };
     }
 
-    if (this.securityService.isLockedOut(email)) {
+    const lockStatus = await this.securityService.getAccountLockStatus(email);
+    if (lockStatus) {
       await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_FAILURE, ipAddress, userAgent, {
         attemptedEmail: email,
         reason: 'account_locked',
@@ -74,12 +71,12 @@ export class AuthService {
     // Verify password
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
     if (!passwordValid) {
-      const failedAttempt = this.securityService.recordFailedAttempt(email);
+      const failedAttempt = await this.securityService.recordFailedAttempt(email);
 
       await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_FAILURE, ipAddress, userAgent, {
         attemptedEmail: email,
         reason: failedAttempt.locked ? 'account_locked' : 'invalid_credentials',
-        failedAttempts: failedAttempt.count,
+        failedAttempts: failedAttempt.attempts,
       });
 
       if (failedAttempt.locked) {
@@ -133,7 +130,7 @@ export class AuthService {
       now,
     );
 
-    const jwtPayload: JwtPayload = {
+    const jwtPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
       sub: user.id,
       email: user.email,
       tid: tenantId,
@@ -142,22 +139,20 @@ export class AuthService {
       tokenVersion: user.tokenVersion,
       mustChangePassword: user.mustChangePassword,
       sid: tokenId,
-      iat: Math.floor(now.getTime() / 1000),
-      exp: Math.floor(now.getTime() / 1000) + accessTokenExpiresInSeconds,
     };
 
-    const refreshTokenPayload: RefreshTokenPayload = {
+    const refreshTokenPayload: Omit<RefreshTokenPayload, 'iat' | 'exp'> = {
       sub: user.id,
       tid: tenantId,
       jti: tokenId,
       tokenVersion: user.tokenVersion,
-      iat: Math.floor(now.getTime() / 1000),
-      exp: Math.floor(now.getTime() / 1000) + policy.maxSessionDurationHours * 60 * 60,
     };
 
-    const accessToken = await this.jwtService.signAsync(jwtPayload);
+    const accessToken = await this.jwtService.signAsync(jwtPayload, {
+      expiresIn: accessTokenExpiresInSeconds,
+    });
     const refreshToken = await this.jwtService.signAsync(refreshTokenPayload, {
-      expiresIn: '7d',
+      expiresIn: `${policy.maxSessionDurationHours}h`,
     });
 
     // Store session
@@ -174,7 +169,7 @@ export class AuthService {
     });
 
     // Clear failed attempts
-    this.securityService.clearFailedAttempts(email);
+    await this.securityService.resetFailedAttempts(email);
 
     // Update last login
     await this.dbService.db
@@ -184,27 +179,6 @@ export class AuthService {
 
     // Audit
     await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_SUCCESS, ipAddress, userAgent, { tenantId });
-
-    // Check unusual access
-    const unusual = this.securityService.checkUnusualAccess({
-      userId: user.id,
-      tenantId,
-      ipAddress,
-      userAgent,
-      timestamp: new Date(),
-    });
-    const securityNotice = unusual.isUnusual
-      ? {
-          code: 'unusual_access_detected' as const,
-          reasons: unusual.reasons,
-        }
-      : undefined;
-
-    if (unusual.isUnusual) {
-      await this.recordAudit(user.id, user.email, AuditEventType.UNUSUAL_ACCESS_DETECTED, ipAddress, userAgent, {
-        reasons: unusual.reasons,
-      });
-    }
 
     // Handle forced password change
     if (user.mustChangePassword || user.state === 'pending_password_change') {
@@ -226,7 +200,6 @@ export class AuthService {
           userAgent,
         },
         accessToken,
-        securityNotice,
       };
     }
 
@@ -248,7 +221,6 @@ export class AuthService {
       },
       accessToken,
       refreshToken,
-      securityNotice,
     };
   }
 
@@ -271,7 +243,7 @@ export class AuthService {
         closedAt: new Date(),
         closeReason: 'user_logout',
       })
-      .where(eq(sessions.userId, userId));
+      .where(eq(sessions.id, sessionId));
 
     if (user) {
       await this.recordAudit(userId, user.email, AuditEventType.LOGOUT, ipAddress, userAgent, {});
@@ -330,7 +302,7 @@ export class AuthService {
       );
 
       // Rotate tokens
-      const newPayload: JwtPayload = {
+      const newPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
         sub: user.id,
         email: user.email,
         tid: payload.tid,
@@ -339,19 +311,17 @@ export class AuthService {
         tokenVersion: user.tokenVersion,
         mustChangePassword: user.mustChangePassword,
         sid: activeSession.id,
-        iat: Math.floor(now.getTime() / 1000),
-        exp: Math.floor(now.getTime() / 1000) + accessTokenExpiresInSeconds,
       };
 
-      const accessToken = await this.jwtService.signAsync(newPayload);
+      const accessToken = await this.jwtService.signAsync(newPayload, {
+        expiresIn: accessTokenExpiresInSeconds,
+      });
       const newRefreshToken = await this.jwtService.signAsync(
         {
           sub: user.id,
           tid: payload.tid,
           jti: activeSession.id,
           tokenVersion: user.tokenVersion,
-          iat: Math.floor(now.getTime() / 1000),
-          exp: Math.floor(now.getTime() / 1000) + policy.maxSessionDurationHours * 60 * 60,
         },
         { expiresIn: `${policy.maxSessionDurationHours}h` },
       );

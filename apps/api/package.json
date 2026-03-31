@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nest start --watch",
-    "build": "nest build",
-    "start": "node dist/main.js",
+    "dev": "tsc-watch -p tsconfig.json --onSuccess \"node --env-file ../../.env --import tsx/esm dist/apps/api/src/main.js\"",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file ../../.env --import tsx/esm dist/apps/api/src/main.js",
     "lint": "biome check src test package.json tsconfig.json nest-cli.json biome.json vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx --env-file ../../.env src/seed.ts",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
@@ -31,6 +32,7 @@
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "drizzle-orm": "^0.45.2",
+    "nodemailer": "^7.0.3",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "postgres": "^3.4.8",
@@ -45,10 +47,14 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.3",
+    "@types/nodemailer": "^7.0.11",
     "@types/passport-local": "^1.0.38",
     "@types/supertest": "^6.0.3",
     "@types/uuid": "^11.0.0",
     "drizzle-kit": "^0.31.10",
-    "supertest": "^7.1.4"
+    "supertest": "^7.1.4",
+    "ts-node": "^10.9.2",
+    "tsc-watch": "^7.2.0",
+    "tsx": "^4.21.0"
   }
 }

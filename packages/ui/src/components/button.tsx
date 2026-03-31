@@ -7,6 +7,7 @@ const buttonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2',
     'whitespace-nowrap rounded-lg text-sm font-semibold',
+    'cursor-pointer',
     'transition-colors duration-150 ease-out',
     focusRing,
     disabledStyles,

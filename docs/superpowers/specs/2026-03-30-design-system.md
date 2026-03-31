@@ -367,7 +367,7 @@ Los componentes que representan bloques complejos (Card, Dialog, Table) se estru
 | Estado | Implementación | Uso |
 |--------|----------------|-----|
 | **Default** | Estilo base del componente | Estado de reposo |
-| **Hover** | Cambio sutil de fondo/borde | Mouse sobre elemento interactivo |
+| **Hover** | Cambio sutil de fondo/borde + `cursor-pointer` | Mouse sobre elemento interactivo |
 | **Focus** | `ring-2 ring-ring ring-offset-2` | Elemento tiene foco del teclado |
 | **Focus visible** | Mismo ring, solo con teclado (`focus-visible`) | No mostrar ring en clicks de mouse |
 | **Active** | Opacidad reducida (0.8) o fondo más oscuro | Momento del click/press |
@@ -421,6 +421,7 @@ Definidas como `@keyframes` dentro de `@theme`:
 4. Respetar `prefers-reduced-motion` — deshabilitar animaciones no esenciales para usuarios que lo tienen activado.
 5. Hover de cards: solo `shadow-sm` + `translateY(-1px)` — sutil, no teatral.
 6. Estados de loading SIEMPRE bloquean interacción (`pointer-events-none`).
+7. Botones SIEMPRE tienen `cursor-pointer` en estado default y hover.
 
 ---
 
@@ -634,3 +635,199 @@ Definidas como `@keyframes` dentro de `@theme`:
 6. **Preferir composición sobre configuración** — compound components en vez de un mega-componente con 50 props.
 7. **Accesibilidad no es opcional** — todo componente cumple WCAG 2.1 AA por defecto.
 8. **Mobile-first no aplica en esta etapa** — el sistema es desktop-first por naturaleza (odontólogos usan PC en consultorio). Responsive se maneja como adaptación, no como diseño principal.
+
+---
+
+## 13. Skeleton — Estados de carga
+
+### 13.1 Filosofía
+
+Todo lo que tarda en cargarse muestra un placeholder estructural que replica el layout del contenido real. El skeleton NO es un spinner genérico — es un molde vacío que le dice al usuario "esto es lo que va a aparecer acá". Esto reduce perceived latency y evita layout shift cuando el contenido llega.
+
+### 13.2 Animación
+
+Se usa un **shimmer** (barrido de luz) en vez de `animate-pulse`. El shimmer es más sutil, premium y no genera la sensación de "parpadeo" que tiene pulse en fondos claros.
+
+```css
+@keyframes skeleton-shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+```
+
+| Propiedad | Valor | Nota |
+|-----------|-------|------|
+| Duración | `1.5s` | Lo suficientemente lento para no distraer |
+| Timing | `ease-in-out` | Suave, no mecánico |
+| Iteración | `infinite` | Se repite hasta que el contenido cargue |
+| Dirección | Normal (no alternate) | Barrido unidireccional |
+| Color base | `--color-muted` | slate-100 light / slate-800 dark |
+| Color highlight | `rgba(255,255,255,0.4)` light / `rgba(255,255,255,0.06)` dark | Brillo que pasa |
+
+### 13.3 Componente base — `Skeleton`
+
+Componente building-block. Se usa para construir cualquier placeholder.
+
+```typescript
+export interface SkeletonProps extends ComponentPropsWithRef<'div'> {
+  /** Ancho. Default: "100%" */
+  width?: string | number;
+  /** Alto. Default: "1rem" */
+  height?: string | number;
+  /** Forma del borde */
+  shape?: 'rect' | 'circle';
+}
+```
+
+| Shape | Border radius | Uso |
+|-------|---------------|-----|
+| `rect` | `rounded-md` (6px) | Default. Texto, inputs, cards, botones |
+| `circle` | `rounded-full` | Avatares, status dots, icon placeholders |
+
+**Reglas:**
+- `width` y `height` son props, NO className hacking. Mantienen la API declarativa.
+- Nunca usar `Skeleton` sin dimensiones explícitas — un skeleton sin tamaño es invisible.
+- El componente aplica `aria-hidden="true"` internamente — el contenedor padre es responsable de `role="status"`.
+
+### 13.4 Componente `SkeletonText`
+
+Bloque de texto placeholder con múltiples líneas.
+
+```typescript
+export interface SkeletonTextProps {
+  /** Cantidad de líneas. Default: 3 */
+  lines?: number;
+  /** Gap entre líneas. Default: "0.5rem" (8px) */
+  gap?: string;
+  /** Ancho de la última línea. Default: "70%" — simula texto natural */
+  lastLineWidth?: string;
+}
+```
+
+| Líneas | Genera | Uso |
+|--------|--------|-----|
+| 1 | 1 línea al 100% | Títulos, labels |
+| 2-4 | N líneas + última al 70% | Párrafos, descripciones |
+| 5+ | Considerar si el contenido real necesita tanto texto visible | Descripciones largas |
+
+### 13.5 Presets compuestos
+
+Los siguientes presets cubren los patrones de carga más comunes del sistema. Cada uno replica la estructura del componente real que va a reemplazar.
+
+#### `SkeletonTable`
+
+```
+┌──────────────────────────────────────────┐
+│ ████████  ████████  ████████  ████████  │  ← header row
+│ ─────────────────────────────────────── │
+│ ██████████  ██████  ████████  ██████   │  ← data row 1
+│ ██████████  ██████  ████████  ██████   │  ← data row 2
+│ ██████████  ██████  ████████  ██████   │  ← data row 3
+└──────────────────────────────────────────┘
+```
+
+| Prop | Default | Uso |
+|------|---------|-----|
+| `rows` | 5 | Cantidad de filas de datos |
+| `columns` | 4 | Cantidad de columnas |
+| `showHeader` | `true` | Fila de headers |
+
+#### `SkeletonCard`
+
+```
+┌────────────────────┐
+│ ██████████         │  ← título
+│ ████               │  ← descripción corta
+│                    │
+│ ████████████████   │  ← contenido
+│ ████████           │  ← contenido
+│                    │
+│        ██████████  │  ← footer / acción
+└────────────────────┘
+```
+
+#### `SkeletonForm`
+
+```
+┌────────────────────┐
+│ ████               │  ← label
+│ █████████████████  │  ← input (h-10)
+│                    │
+│ ████               │  ← label
+│ █████████████████  │  ← input (h-10)
+│                    │
+│ ████████████████   │  ← botón submit (h-10)
+└────────────────────┘
+```
+
+| Prop | Default | Uso |
+|------|---------|-----|
+| `fields` | 3 | Cantidad de campos |
+| `showSubmit` | `true` | Botón submit al final |
+
+#### `SkeletonMetric`
+
+```
+┌──────────┐
+│ ████     │  ← label
+│ ██████   │  ← valor grande
+│ ██  ██   │  ← variación / comparación
+└──────────┘
+```
+
+Usado para dashboard header con métricas (turnos del día, facturación, pacientes activos).
+
+#### `SkeletonSidebar`
+
+```
+┌────┐
+│ ██ │  ← logo / nombre
+│    │
+│ ██ │  ← nav item
+│ ██ │  ← nav item
+│ ██ │  ← nav item
+│ ██ │  ← nav item
+│    │
+│ ██ │  ← user / logout
+└────┘
+```
+
+| Prop | Default | Uso |
+|------|---------|-----|
+| `items` | 6 | Cantidad de nav items |
+| `collapsed` | `false` | Sidebar colapsado (solo iconos) |
+
+### 13.6 Convenciones de uso
+
+1. **Todo `Suspense` fallback usa Skeleton presets** — nunca un spinner suelto, nunca un "Cargando..." en texto plano.
+2. **El skeleton replica el layout** — mismo grid, mismos gaps, mismos tamaños. Si la tabla tiene 4 columnas, el skeleton tiene 4 columnas.
+3. **`role="status"` + `aria-busy="true"`** en el contenedor wrapper, no en cada bloque individual.
+4. **`aria-live="polite"`** cuando el contenido es una región dinámica que se actualiza (ej: búsqueda de pacientes).
+5. **Transición suave** — cuando el contenido real reemplaza al skeleton, usar `opacity` transition (200ms) para evitar un "flash" brusco. Esto se maneja con `AnimatePresence` o CSS transition en el wrapper.
+6. **Prefers-reduced-motion** — el shimmer se reemplaza por un color sólido estático (`bg-muted`) sin animación.
+7. **Nunca usar skeleton para estados vacíos** — skeleton = "está cargando". Empty state = "no hay datos". Son cosas distintas con componentes distintos.
+8. **Los presets son punto de partida** — si un feature necesita un skeleton específico (ej: odontograma), se crea en `apps/web/src/features/` componiendo los bloques base.
+
+### 13.7 Accesibilidad
+
+| Atributo | Dónde | Valor |
+|----------|-------|-------|
+| `role="status"` | Contenedor wrapper | Indica región de carga |
+| `aria-busy="true"` | Contenedor wrapper | "true" mientras carga, se remueve al llegar contenido |
+| `aria-hidden="true"` | Cada bloque `Skeleton` | El lector de pantalla no anuncia "rectángulo gris" |
+| `aria-label` | Contenedor wrapper | "Cargando {contexto}" — ej: "Cargando pacientes" |
+
+### 13.8 Estructura de archivos
+
+```
+packages/ui/src/components/
+  skeleton.tsx          # Skeleton, SkeletonText, SkeletonCircle
+  skeleton-presets.tsx  # SkeletonTable, SkeletonCard, SkeletonForm, SkeletonMetric, SkeletonSidebar
+```
+
+Se exportan ambos desde `index.ts`:
+
+```typescript
+export * from './components/skeleton';
+export * from './components/skeleton-presets';
+```

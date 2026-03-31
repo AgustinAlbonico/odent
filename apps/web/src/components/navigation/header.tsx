@@ -41,7 +41,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             aria-label="Toggle sidebar"
           >
             <Menu size={20} />
@@ -59,7 +59,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           aria-label={darkMode ? 'Modo claro' : 'Modo oscuro'}
         >
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -68,7 +68,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         {/* Notifications placeholder */}
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors relative"
+          className="flex h-8 w-8 items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground transition-colors relative"
           aria-label="Notificaciones"
         >
           <Bell size={20} />

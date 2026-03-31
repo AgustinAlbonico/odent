@@ -3,16 +3,18 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import {
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
   Input,
   Label,
+  Skeleton,
+  SkeletonForm,
 } from '@sistema-odontologico/ui';
 import { ApiClientError } from './api';
 import { normalizeRedirectPath, resolvePostLoginDestination } from './login-routing';
@@ -26,6 +28,7 @@ export function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,16 +57,16 @@ export function LoginForm() {
       if (err instanceof ApiClientError) {
         switch (err.status) {
           case 401:
-            setError('Credenciales inválidas. Verificá tu email y contraseña.');
+            setError('Credenciales invalidas. Verifica tu email y contrasena.');
             break;
           case 423:
-            setError('Tu cuenta está bloqueada. Contactá al administrador.');
+            setError('Tu cuenta esta bloqueada. Contacta al administrador.');
             break;
           default:
-            setError(err.message || 'Ocurrió un error. Intentá de nuevo.');
+            setError(err.message || 'Ocurrio un error. Intenta de nuevo.');
         }
       } else {
-        setError('Error de conexión. Intentá de nuevo.');
+        setError('Error de conexion. Intenta de nuevo.');
       }
     } finally {
       setIsSubmitting(false);
@@ -73,30 +76,60 @@ export function LoginForm() {
   const busy = isSubmitting || Boolean(authLoading);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Iniciar sesión</CardTitle>
-        <CardDescription>Ingresá tus credenciales para acceder al sistema.</CardDescription>
+    <Card className="border-border/50 shadow-none lg:border lg:shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-2xl tracking-tight">Iniciar sesion</CardTitle>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Ingresa tus credenciales para acceder al sistema.
+        </p>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 pt-2">
+          {/* Notice banner */}
           {loginNotice && (
             <div
-              className={
-                loginNotice.tone === 'success'
-                  ? 'rounded-md border border-success bg-success/10 p-3 text-sm text-success'
-                  : 'rounded-md border border-warning bg-warning/10 p-3 text-sm text-warning'
-              }
+              className="auth-stagger-item rounded-lg border p-3 text-sm"
+              style={{
+                animation: 'auth-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
+                animationDelay: '0.1s',
+                borderColor:
+                  loginNotice.tone === 'success'
+                    ? 'var(--color-success)'
+                    : 'var(--color-warning)',
+                backgroundColor:
+                  loginNotice.tone === 'success'
+                    ? 'color-mix(in srgb, var(--color-success) 8%, transparent)'
+                    : 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
+                color:
+                  loginNotice.tone === 'success'
+                    ? 'var(--color-success)'
+                    : 'var(--color-warning)',
+              }}
             >
               {loginNotice.message}
             </div>
           )}
+
+          {/* Error banner */}
           {error && (
-            <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+            <div
+              className="rounded-lg border border-destructive bg-destructive/8 p-3 text-sm text-destructive"
+              style={{
+                animation: 'auth-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
+              }}
+            >
               {error}
             </div>
           )}
-          <div className="space-y-2">
+
+          {/* Email field */}
+          <div
+            className="space-y-2"
+            style={{
+              animation: 'auth-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
+              animationDelay: '0.15s',
+            }}
+          >
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -107,30 +140,71 @@ export function LoginForm() {
               required
               autoComplete="email"
               disabled={busy}
+              className="h-11"
             />
           </div>
-          <div className="space-y-2">
+
+          {/* Password field */}
+          <div
+            className="space-y-2"
+            style={{
+              animation: 'auth-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
+              animationDelay: '0.25s',
+            }}
+          >
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Contraseña</Label>
-              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                ¿Olvidaste tu contraseña?
+              <Label htmlFor="password">Contrasena</Label>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-primary/70 transition-colors hover:text-primary"
+              >
+                Olvidaste tu contrasena?
               </Link>
             </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              disabled={busy}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="........"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                disabled={busy}
+                className="h-11 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
         </CardContent>
-        <CardFooter className="flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={busy}>
-            {isSubmitting ? 'Ingresando...' : 'Ingresar'}
+        <CardFooter
+          className="pt-2"
+          style={{
+            animation: 'auth-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
+            animationDelay: '0.35s',
+          }}
+        >
+          <Button type="submit" className="h-11 w-full" size="lg" disabled={busy}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Ingresando...
+              </>
+            ) : (
+              'Ingresar'
+            )}
           </Button>
         </CardFooter>
       </form>
@@ -140,14 +214,19 @@ export function LoginForm() {
 
 export function LoginFormFallback() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Iniciar sesión</CardTitle>
-        <CardDescription>Cargando formulario de acceso…</CardDescription>
+    <Card className="border-border/50 shadow-none lg:border lg:shadow-sm">
+      <CardHeader className="pb-2">
+        <Skeleton height="1.75rem" width="9rem" />
+        <div className="mt-2">
+          <Skeleton height="1rem" width="14rem" />
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-24 animate-pulse rounded-lg bg-muted" />
+      <CardContent className="pt-2">
+        <SkeletonForm fields={2} />
       </CardContent>
+      <CardFooter className="pt-2">
+        <Skeleton height="2.75rem" width="100%" />
+      </CardFooter>
     </Card>
   );
 }

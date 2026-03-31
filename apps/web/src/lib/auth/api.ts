@@ -6,6 +6,7 @@ import { type PermissionEntry } from '@sistema-odontologico/permissions';
  */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID ?? '';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -58,6 +59,32 @@ export interface ApiError {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Mutex to prevent multiple concurrent token refresh requests.
+ * When several API calls get 401 at the same time, only the first
+ * one triggers the actual refresh; the rest await the same promise.
+ */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -67,6 +94,32 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
     credentials: 'include',
   });
+
+  // Handle 401 with automatic token refresh
+  if (
+    res.status === 401
+    && !path.includes('/api/auth/refresh')
+    && !path.includes('/api/auth/login')
+  ) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      // Retry the original request once with the new token
+      const retryRes = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        credentials: 'include',
+      });
+      if (retryRes.ok) {
+        if (retryRes.status === 204) return undefined as T;
+        return retryRes.json() as Promise<T>;
+      }
+      // Retry failed — fall through to error handling below
+    }
+    // Refresh failed — fall through to error handling below
+  }
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
@@ -135,9 +188,18 @@ export class ApiClientError extends Error {
 
 /** Login with email and password. Sets httpOnly cookies server-side. */
 export async function login(email: string, password: string): Promise<LoginResponse> {
+  if (!TENANT_ID) {
+    throw new ApiClientError(
+      500,
+      'Tenant ID not configured. Set NEXT_PUBLIC_TENANT_ID in .env',
+      'TENANT_NOT_CONFIGURED',
+    );
+  }
+
   return request<LoginResponse>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+    headers: { 'x-tenant-id': TENANT_ID },
   });
 }
 
@@ -398,4 +460,142 @@ export async function revokePermissionReview(
     `/api/admin/permission-reviews/${reviewId}/revoke`,
     { method: 'PATCH' },
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin API — User Management                                         */
+/* ------------------------------------------------------------------ */
+
+export interface UserListItem {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  state: string;
+  mustChangePassword: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface UserDetail extends UserListItem {
+  tokenVersion: number;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  updatedAt: string;
+  customPermissions: UserPermissionItem[];
+}
+
+export interface UserPermissionItem {
+  id: string;
+  module: string;
+  action: string;
+  scope: string;
+}
+
+export interface UserPermissionsResponse {
+  custom: UserPermissionItem[];
+  inherited: {
+    role: string;
+    permissions: Array<{ module: string; action: string; scope: string }>;
+  };
+}
+
+export interface UsersFilters {
+  role?: string;
+  state?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export async function getUsers(filters: UsersFilters = {}): Promise<PaginatedResponse<UserListItem>> {
+  const params = new URLSearchParams();
+  if (filters.role) params.set('role', filters.role);
+  if (filters.state) params.set('state', filters.state);
+  if (filters.search) params.set('search', filters.search);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const qs = params.toString();
+  const response = await request<unknown>(`/api/admin/users${qs ? `?${qs}` : ''}`);
+  const raw = response as Record<string, unknown>;
+  const users = (raw.users ?? raw.data ?? []) as UserListItem[];
+  const total = (raw.total ?? 0) as number;
+  const page = (raw.page ?? 1) as number;
+  const limit = (raw.limit ?? raw.pageSize ?? 20) as number;
+  const totalPages = (raw.totalPages ?? 1) as number;
+  return { data: users, total, page, pageSize: limit, totalPages };
+}
+
+export async function getUser(userId: string): Promise<UserDetail> {
+  return request<UserDetail>(`/api/admin/users/${userId}`);
+}
+
+export async function createUser(data: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  state?: string;
+  mustChangePassword?: boolean;
+}): Promise<UserDetail> {
+  return request<UserDetail>('/api/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateUser(userId: string, data: {
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  state?: string;
+  mustChangePassword?: boolean;
+}): Promise<UserDetail> {
+  return request<UserDetail>(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function changeUserState(userId: string, state: string): Promise<UserDetail> {
+  return request<UserDetail>(`/api/admin/users/${userId}/state`, {
+    method: 'PATCH',
+    body: JSON.stringify({ state }),
+  });
+}
+
+export async function forceUserPasswordChange(userId: string): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`/api/admin/users/${userId}/force-password`, {
+    method: 'PATCH',
+    body: JSON.stringify({ mustChangePassword: true }),
+  });
+}
+
+export async function getUserPermissions(userId: string): Promise<UserPermissionsResponse> {
+  return request<UserPermissionsResponse>(`/api/admin/users/${userId}/permissions`);
+}
+
+export async function updateUserPermissions(userId: string, permissions: Array<{ module: string; action: string; scope: string }>): Promise<UserPermissionItem[]> {
+  return request<UserPermissionItem[]>(`/api/admin/users/${userId}/permissions`, {
+    method: 'PUT',
+    body: JSON.stringify({ permissions }),
+  });
+}
+
+export async function deleteUserPermission(userId: string, permissionId: string): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`/api/admin/users/${userId}/permissions/${permissionId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ─── Password Change (self-service) ──────────────────
+export async function changePassword(data: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<void> {
+  return request<void>('/api/auth/password/change', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

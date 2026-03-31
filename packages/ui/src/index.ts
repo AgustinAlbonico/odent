@@ -4,4 +4,6 @@ export * from './components/input';
 export * from './components/label';
 export * from './components/card';
 export * from './components/badge';
+export * from './components/skeleton';
+export * from './components/skeleton-presets';
 export { cn, focusRing, disabledStyles } from './lib/utils';

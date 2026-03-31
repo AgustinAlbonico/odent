@@ -14,6 +14,30 @@ import { Action, Scope } from '@sistema-odontologico/permissions';
 import { SessionPolicyRuntimeService } from '../../modules/session-policy/session-policy-runtime.service.js';
 
 /**
+ * Read metadata from handler or class.
+ * Falls back to native Reflect API when Reflector is not available
+ * (known issue with APP_GUARD + useClass in some NestJS versions).
+ */
+function readMetadata<T>(
+  reflector: Reflector | undefined,
+  key: string,
+  handler: ReturnType<ExecutionContext['getHandler']>,
+  cls: ReturnType<ExecutionContext['getClass']>,
+): T | undefined {
+  if (reflector) {
+    // NestJS 11 changed Reflector.getAllAndOverride to accept typed decorators.
+    // Since we use string keys (from SetMetadata), we cast to any to avoid overload mismatch.
+    return (reflector as any).getAllAndOverride(key, [handler, cls]);
+  }
+
+  // Fallback: direct Reflect API
+  return (
+    Reflect.getMetadata(key, handler) ??
+    Reflect.getMetadata(key, cls)
+  );
+}
+
+/**
  * Auth + Permission guard.
  * Evaluates session validity, then VIEW/OPERATE/SCOPE separately.
  */
@@ -35,11 +59,11 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const handler = context.getHandler();
+    const cls = context.getClass();
+
     // Check if route is public
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const isPublic = readMetadata<boolean>(this.reflector, IS_PUBLIC_KEY, handler, cls) ?? false;
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
@@ -91,10 +115,7 @@ export class AuthGuard implements CanActivate {
     }
 
     // Check permission requirements
-    const permissionMeta = this.reflector.getAllAndOverride<PermissionMetadata>(PERMISSION_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const permissionMeta = readMetadata<PermissionMetadata>(this.reflector, PERMISSION_KEY, handler, cls);
 
     if (!permissionMeta) return true; // No permission required
 

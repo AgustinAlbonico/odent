@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@sistema-odontologico/ui';
 import { useAuth } from '@/hooks/use-auth';
 import { useAbilities } from '@/hooks/use-abilities';
@@ -19,11 +19,17 @@ import {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { abilities } = useAbilities();
   const [collapsed, setCollapsed] = useState(false);
 
   const visibleItems = getSidebarNavigationItems(abilities);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <aside
@@ -41,7 +47,7 @@ export function Sidebar() {
           type="button"
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground',
+            'flex h-8 w-8 items-center justify-center rounded-md cursor-pointer text-muted-foreground',
             'hover:bg-muted hover:text-foreground transition-colors',
             collapsed && 'mx-auto',
           )}
@@ -96,9 +102,9 @@ export function Sidebar() {
         )}
         <button
           type="button"
-          onClick={logout}
+          onClick={handleLogout}
           className={cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground',
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium cursor-pointer text-muted-foreground',
             'hover:bg-muted hover:text-foreground transition-colors w-full',
             collapsed && 'justify-center px-0',
           )}

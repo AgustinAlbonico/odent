@@ -61,7 +61,6 @@ export class AuthController {
         return {
           requiresPasswordChange: true,
           user: this.toAuthUser(result.session),
-          securityNotice: result.securityNotice,
         };
       }
       throw new UnauthorizedException({
@@ -95,7 +94,6 @@ export class AuthController {
 
     return {
       user: result.session ? this.toAuthUser(result.session) : undefined,
-      securityNotice: result.securityNotice,
     };
   }
 
@@ -108,7 +106,8 @@ export class AuthController {
     const ipAddress = req.ip ?? 'unknown';
     const userAgent = req.get('user-agent') ?? 'unknown';
 
-    await this.authService.logout('session', userId, ipAddress, userAgent);
+    const sid = (req as any).user?.sid ?? 'unknown';
+    await this.authService.logout(sid, userId, ipAddress, userAgent);
 
     // Clear cookies
     res.clearCookie(defaultCookieConfig.accessTokenName);

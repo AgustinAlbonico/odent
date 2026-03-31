@@ -1,3 +1,3 @@
-export * from './jwt.js';
-export * from './cookies.js';
-export * from './session.js';
+export * from './jwt';
+export * from './cookies';
+export * from './session';

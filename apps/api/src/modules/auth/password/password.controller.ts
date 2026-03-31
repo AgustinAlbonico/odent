@@ -32,11 +32,20 @@ export class PasswordController {
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
 
     // Always return success to prevent email enumeration
-    await this.passwordService.requestRecovery(
+    const token = await this.passwordService.requestRecovery(
       parsed.data.email,
       'system',
       'system',
     );
+
+    // Dev mode: return token when SMTP is not configured
+    if (token) {
+      return {
+        message: 'Si el email existe, recibirás instrucciones de recuperación',
+        dev: true,
+        token,
+      };
+    }
 
     return { message: 'Si el email existe, recibirás instrucciones de recuperación' };
   }

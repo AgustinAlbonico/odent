@@ -72,7 +72,7 @@ describe('Auth Lifecycle — Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    securityService = new SecurityService();
+    securityService = new SecurityService(mockDb as any);
     mockDb = createMockDb();
 
     mockPermissionsService = {
@@ -153,8 +153,44 @@ describe('Auth Lifecycle — Integration', () => {
           tid: 'tenant-1',
           schema: 'tenant_tenant_1',
         }),
+        expect.objectContaining({
+          expiresIn: 15 * 60,
+        }),
       );
       expect(result.session?.schema).toBe('tenant_tenant_1');
+    });
+
+    it('signs login tokens with expiresIn options instead of embedding exp in the payload', async () => {
+      vi.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+      vi.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-refresh-token' as never);
+
+      await authService.login(
+        'test@clinica.com',
+        'correct-password',
+        '192.168.1.1',
+        'Chrome/120',
+        'tenant-1',
+      );
+
+      expect(mockJwtService.signAsync).toHaveBeenNthCalledWith(
+        1,
+        expect.not.objectContaining({
+          exp: expect.any(Number),
+        }),
+        expect.objectContaining({
+          expiresIn: 15 * 60,
+        }),
+      );
+
+      expect(mockJwtService.signAsync).toHaveBeenNthCalledWith(
+        2,
+        expect.not.objectContaining({
+          exp: expect.any(Number),
+        }),
+        expect.objectContaining({
+          expiresIn: `${DEFAULT_SESSION_POLICY.maxSessionDurationHours}h`,
+        }),
+      );
     });
 
     it('returns a concrete unusual-access notice when login happens from a new context', async () => {
@@ -244,8 +280,9 @@ describe('Auth Lifecycle — Integration', () => {
       expect(result.success).toBe(false);
       expect(result.reason).toBe('invalid_credentials');
 
-      // Security service should have recorded the attempt
-      expect(securityService.isLockedOut('nonexistent@test.com')).toBe(false);
+      // Security service should have recorded the attempt (DB-backed, no in-memory check)
+      const lockStatus = await securityService.getAccountLockStatus('nonexistent@test.com');
+      expect(lockStatus).toBeNull();
     });
 
     it('locks the account on the fifth failed attempt and emits ACCOUNT_LOCKED audit', async () => {
@@ -383,6 +420,68 @@ describe('Auth Lifecycle — Integration', () => {
       expect(mockJwtService.signAsync).toHaveBeenCalledTimes(2);
     });
 
+    it('signs refresh-rotated tokens with expiresIn options instead of embedding exp in the payload', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({
+        sub: 'user-1',
+        tid: 'tenant-1',
+        jti: 'old-token-id',
+        tokenVersion: 0,
+      });
+
+      let selectCallCount = 0;
+      mockDb.db.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+
+        if (selectCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: 'user-1',
+                    email: 'test@clinica.com',
+                    role: 'admin',
+                    tokenVersion: 0,
+                    mustChangePassword: false,
+                  },
+                ]),
+              }),
+            }),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([{ id: 'session-1' }]),
+            }),
+          }),
+        };
+      });
+
+      await authService.refresh('valid-refresh-token', '192.168.1.1', 'Chrome/120');
+
+      expect(mockJwtService.signAsync).toHaveBeenNthCalledWith(
+        1,
+        expect.not.objectContaining({
+          exp: expect.any(Number),
+        }),
+        expect.objectContaining({
+          expiresIn: 15 * 60,
+        }),
+      );
+
+      expect(mockJwtService.signAsync).toHaveBeenNthCalledWith(
+        2,
+        expect.not.objectContaining({
+          exp: expect.any(Number),
+        }),
+        expect.objectContaining({
+          expiresIn: `${DEFAULT_SESSION_POLICY.maxSessionDurationHours}h`,
+        }),
+      );
+    });
+
     it('resolves tenant schema again when refreshing tokens', async () => {
       mockJwtService.verifyAsync.mockResolvedValue({
         sub: 'user-1',
@@ -435,6 +534,9 @@ describe('Auth Lifecycle — Integration', () => {
         expect.objectContaining({
           tid: 'tenant-1',
           schema: 'tenant_tenant_1',
+        }),
+        expect.objectContaining({
+          expiresIn: 15 * 60,
         }),
       );
     });
