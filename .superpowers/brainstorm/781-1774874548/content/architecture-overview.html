@@ -1,0 +1,98 @@
+<style>
+  .arch-section{display:flex;flex-direction:column;gap:16px}
+  .arch-row{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .arch-box{min-width:180px;max-width:240px;padding:14px 16px;border:1px solid #334155;border-radius:14px;background:rgba(15,23,42,.78);box-shadow:0 10px 30px rgba(0,0,0,.18);text-align:center}
+  .arch-box h4{margin:0 0 8px 0;font-size:15px}
+  .arch-box p{margin:0;font-size:13px;line-height:1.45;color:#cbd5e1}
+  .arch-arrow{font-size:26px;color:#60a5fa;font-weight:700}
+  .arch-grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .arch-badge{display:inline-block;margin-bottom:10px;padding:4px 10px;border-radius:999px;background:#0f172a;border:1px solid #3b82f6;color:#93c5fd;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .arch-note{padding:14px 16px;border-radius:14px;background:rgba(2,6,23,.72);border:1px dashed #475569;color:#e2e8f0;line-height:1.6}
+</style>
+
+<h2>Arquitectura recomendada</h2>
+<p class="subtitle">SaaS multi-tenant compartido por defecto, con customización controlada y aislamiento premium sólo cuando tenga sentido comercial.</p>
+
+<div class="arch-section">
+  <div class="mockup">
+    <div class="mockup-header">1. Vista lógica del sistema</div>
+    <div class="mockup-body">
+      <div class="arch-row">
+        <div class="arch-box">
+          <span class="arch-badge">Entrada</span>
+          <h4>Usuarios</h4>
+          <p>Recepción, odontólogos, admins y dueños de clínica.</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box">
+          <span class="arch-badge">UI</span>
+          <h4>Frontend web</h4>
+          <p>Una sola app para todos los tenants, con branding y módulos activables por plan o cliente.</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-box">
+          <span class="arch-badge">Core</span>
+          <h4>Backend modular</h4>
+          <p>Auth, agenda, pacientes, historia clínica, tratamientos, caja, reportes e integraciones.</p>
+        </div>
+      </div>
+      <div class="arch-row" style="margin-top:14px">
+        <div class="arch-box">
+          <span class="arch-badge">Datos</span>
+          <h4>PostgreSQL compartido</h4>
+          <p>Separación por <code>tenant_id</code> y camino abierto a DB dedicada para premium.</p>
+        </div>
+        <div class="arch-box">
+          <span class="arch-badge">Async</span>
+          <h4>Worker / Jobs</h4>
+          <p>Recordatorios, PDFs, tareas asíncronas e integraciones con terceros.</p>
+        </div>
+        <div class="arch-box">
+          <span class="arch-badge">Archivos</span>
+          <h4>Object storage</h4>
+          <p>Imágenes, PDFs y adjuntos clínicos separados por tenant.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arch-grid-2">
+    <div class="mockup">
+      <div class="mockup-header">2. Camino de tenancy</div>
+      <div class="mockup-body">
+        <div class="arch-row" style="justify-content:flex-start">
+          <div class="arch-box" style="text-align:left;max-width:none">
+            <span class="arch-badge">Estándar</span>
+            <h4>Shared app + Shared DB</h4>
+            <p>Es la opción base para la mayoría: menor costo, menor fricción y releases más simples.</p>
+          </div>
+        </div>
+        <div class="arch-row" style="justify-content:flex-start">
+          <div class="arch-box" style="text-align:left;max-width:none">
+            <span class="arch-badge">Custom</span>
+            <h4>Shared app + módulos exclusivos</h4>
+            <p>Se habilitan features o integraciones específicas por tenant sin duplicar toda la plataforma.</p>
+          </div>
+        </div>
+        <div class="arch-row" style="justify-content:flex-start">
+          <div class="arch-box" style="text-align:left;max-width:none">
+            <span class="arch-badge">Premium</span>
+            <h4>Dedicated DB o Dedicated Stack</h4>
+            <p>Sólo cuando hay una razón comercial fuerte, compliance o necesidad técnica real.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">3. Regla para customizaciones</div>
+      <div class="mockup-body">
+        <div class="arch-note">
+          <strong>Orden recomendado:</strong><br>
+          configuración → flags → módulo opcional → integración por tenant → workflow específico → DB dedicada → stack dedicado.<br><br>
+          <strong>Evitar:</strong> forks por cliente y <code>if cliente_x</code> desparramados por todo el core.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

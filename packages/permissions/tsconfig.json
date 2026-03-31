@@ -1,0 +1,8 @@
+{
+  "extends": "@sistema-odontologico/tsconfig/base",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"]
+}

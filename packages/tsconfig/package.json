@@ -1,0 +1,16 @@
+{
+  "name": "@sistema-odontologico/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json",
+    "./base": "./base.json",
+    "./nextjs": "./nextjs.json",
+    "./nestjs": "./nestjs.json"
+  },
+  "files": [
+    "*.json",
+    "README.md"
+  ]
+}

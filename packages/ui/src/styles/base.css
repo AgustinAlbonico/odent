@@ -1,0 +1,11 @@
+/* packages/ui/src/styles/base.css */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+}

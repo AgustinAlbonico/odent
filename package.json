@@ -1,0 +1,31 @@
+{
+  "name": "sistema-odontologico",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "prepare": "node -e \"const { existsSync } = require('node:fs'); const { execSync } = require('node:child_process'); if (existsSync('.git')) { execSync('pnpm exec husky', { stdio: 'inherit' }); }\"",
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "infra:up": "docker compose -f infra/compose.yml -f infra/compose.override.yml up -d",
+    "infra:down": "docker compose -f infra/compose.yml -f infra/compose.override.yml down",
+    "infra:reset": "docker compose -f infra/compose.yml -f infra/compose.override.yml down -v"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.1",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.0"
+  }
+}

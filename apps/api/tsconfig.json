@@ -1,0 +1,18 @@
+{
+  "extends": "@sistema-odontologico/tsconfig/nestjs",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "dist",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@sistema-odontologico/audit-core": ["../../packages/audit-core/src/index.ts"],
+      "@sistema-odontologico/auth-core": ["../../packages/auth-core/src/index.ts"],
+      "@sistema-odontologico/permissions": ["../../packages/permissions/src/index.ts"],
+      "@sistema-odontologico/tenancy-core": ["../../packages/tenancy-core/src/index.ts"],
+      "@sistema-odontologico/types": ["../../packages/types/src/index.ts"],
+      "@sistema-odontologico/validation": ["../../packages/validation/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@sistema-odontologico/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check src next.config.ts package.json tsconfig.json biome.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts --passWithNoTests",
+    "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@sistema-odontologico/auth-core": "workspace:*",
+    "@sistema-odontologico/config": "workspace:*",
+    "@sistema-odontologico/permissions": "workspace:*",
+    "@sistema-odontologico/types": "workspace:*",
+    "@sistema-odontologico/ui": "workspace:*",
+    "lucide-react": "^0.511.0",
+    "next": "16.1.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@sistema-odontologico/tsconfig": "workspace:*",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^29.0.1"
+  }
+}

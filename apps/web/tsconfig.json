@@ -1,0 +1,16 @@
+{
+  "extends": "@sistema-odontologico/tsconfig/nextjs",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@sistema-odontologico/auth-core": ["../../packages/auth-core/src/index.ts"],
+      "@sistema-odontologico/config": ["../../packages/config/src/index.ts"],
+      "@sistema-odontologico/permissions": ["../../packages/permissions/src/index.ts"],
+      "@sistema-odontologico/types": ["../../packages/types/src/index.ts"],
+      "@sistema-odontologico/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

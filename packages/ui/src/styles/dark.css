@@ -1,0 +1,26 @@
+/* packages/ui/src/styles/dark.css */
+.dark {
+  --color-background: oklch(20% 0.02 260);
+  --color-foreground: oklch(98% 0.005 260);
+  --color-muted: oklch(27% 0.02 260);
+  --color-muted-foreground: oklch(70% 0.015 260);
+  --color-card: oklch(27% 0.02 260);
+  --color-card-foreground: oklch(98% 0.005 260);
+  --color-border: oklch(37% 0.02 260);
+  --color-ring: oklch(65% 0.14 175);
+  --color-ring-offset: oklch(20% 0.02 260);
+
+  --color-primary: oklch(65% 0.14 175);
+  --color-primary-foreground: oklch(20% 0.02 260);
+  --color-primary-hover: oklch(72% 0.14 175);
+  --color-primary-subtle: oklch(35% 0.08 175);
+
+  --color-destructive: oklch(60% 0.18 27);
+  --color-destructive-foreground: oklch(98% 0 0);
+  --color-warning: oklch(70% 0.15 75);
+  --color-warning-foreground: oklch(20% 0.02 260);
+  --color-success: oklch(65% 0.17 145);
+  --color-success-foreground: oklch(20% 0.02 260);
+  --color-info: oklch(60% 0.16 260);
+  --color-info-foreground: oklch(20% 0.02 260);
+}
