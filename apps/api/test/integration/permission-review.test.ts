@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PermissionReviewService } from '../../src/modules/permission-review/permission-review.service.js';
 import { AuditEventType } from '@sistema-odontologico/audit-core';
-import { permissionReviews, userPermissions, users as usersTable } from '../../src/infra/database/schema.js';
+import {
+  permissionReviews,
+  userPermissions,
+  users as usersTable,
+} from '../../src/infra/database/schema.js';
 
 // ─── Mock infrastructure ──────────────────────────────────────────────────
 
@@ -125,7 +129,13 @@ function createReviewMockDb() {
 describe('Permission Review — Integration', () => {
   let service: PermissionReviewService;
   let mockDb: ReturnType<typeof createReviewMockDb>;
-  const adminUser = { sub: 'admin-1', email: 'admin@test.com', ip: '1.1.1.1', userAgent: 'Chrome' };
+  const adminUser = {
+    sub: 'admin-1',
+    email: 'admin@test.com',
+    tid: 'tenant-1',
+    ip: '1.1.1.1',
+    userAgent: 'Chrome',
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();

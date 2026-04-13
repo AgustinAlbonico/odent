@@ -12,10 +12,17 @@ const mockInsert = vi.fn().mockReturnValue({ values: mockInsertValues });
 
 const mockUpdateSet = vi.fn().mockResolvedValue(undefined);
 const mockUpdateWhere = vi.fn().mockReturnValue({ set: mockUpdateSet });
-const mockUpdate = vi.fn().mockReturnValue({ set: () => ({ where: mockUpdateWhere }), where: mockUpdateWhere });
+const mockUpdate = vi
+  .fn()
+  .mockReturnValue({ set: () => ({ where: mockUpdateWhere }), where: mockUpdateWhere });
 
 const mockSelectFromWhere = vi.fn();
-const mockSelectFrom = vi.fn().mockReturnValue({ where: mockSelectFromWhere, limit: vi.fn().mockReturnValue(mockSelectFromWhere) });
+const mockSelectFrom = vi
+  .fn()
+  .mockReturnValue({
+    where: mockSelectFromWhere,
+    limit: vi.fn().mockReturnValue(mockSelectFromWhere),
+  });
 const mockSelect = vi.fn().mockReturnValue({ from: mockSelectFrom });
 
 function createMockDb(userOverrides: Record<string, any> = {}) {
@@ -354,7 +361,7 @@ describe('Auth Lifecycle — Integration', () => {
 
   describe('Logout', () => {
     it('closes session and records audit event', async () => {
-      await authService.logout('session-1', 'user-1', '192.168.1.1', 'Chrome/120');
+      await authService.logout('session-1', 'user-1', '192.168.1.1', 'Chrome/120', 'tenant-1');
 
       // Session should be updated (closed)
       expect(mockDb.db.update).toHaveBeenCalled();
@@ -406,11 +413,7 @@ describe('Auth Lifecycle — Integration', () => {
         };
       });
 
-      const result = await authService.refresh(
-        'valid-refresh-token',
-        '192.168.1.1',
-        'Chrome/120',
-      );
+      const result = await authService.refresh('valid-refresh-token', '192.168.1.1', 'Chrome/120');
 
       expect(result).not.toBeNull();
       expect(result!.accessToken).toBeDefined();
@@ -521,11 +524,7 @@ describe('Auth Lifecycle — Integration', () => {
         };
       });
 
-      const result = await authService.refresh(
-        'valid-refresh-token',
-        '192.168.1.1',
-        'Chrome/120',
-      );
+      const result = await authService.refresh('valid-refresh-token', '192.168.1.1', 'Chrome/120');
 
       expect(result).not.toBeNull();
       expect(mockTenantService.resolveTenant).toHaveBeenCalledWith('tenant-1');
@@ -553,19 +552,17 @@ describe('Auth Lifecycle — Integration', () => {
       mockDb.db.select = vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{
-              id: 'user-1',
-              tokenVersion: 2, // Newer — mismatch!
-            }]),
+            limit: vi.fn().mockResolvedValue([
+              {
+                id: 'user-1',
+                tokenVersion: 2, // Newer — mismatch!
+              },
+            ]),
           }),
         }),
       });
 
-      const result = await authService.refresh(
-        'old-refresh-token',
-        '192.168.1.1',
-        'Chrome/120',
-      );
+      const result = await authService.refresh('old-refresh-token', '192.168.1.1', 'Chrome/120');
 
       expect(result).toBeNull();
     });
@@ -587,11 +584,7 @@ describe('Auth Lifecycle — Integration', () => {
         }),
       });
 
-      const result = await authService.refresh(
-        'valid-refresh-token',
-        '192.168.1.1',
-        'Chrome/120',
-      );
+      const result = await authService.refresh('valid-refresh-token', '192.168.1.1', 'Chrome/120');
 
       expect(result).toBeNull();
     });

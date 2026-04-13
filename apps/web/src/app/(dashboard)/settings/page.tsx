@@ -14,11 +14,7 @@ import {
 } from '@sistema-odontologico/ui';
 import { useAuth } from '@/hooks/use-auth';
 import { useAbilities } from '@/hooks/use-abilities';
-import {
-  getSessionPolicy,
-  updateSessionPolicy,
-  type SessionPolicy,
-} from '@/lib/auth/api';
+import { getSessionPolicy, updateSessionPolicy, type SessionPolicy } from '@/lib/auth/api';
 import { Shield, Loader2, Save, RotateCcw } from 'lucide-react';
 import { Action, Module } from '@sistema-odontologico/permissions';
 
@@ -65,6 +61,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<PolicyField, string>>>({});
+  const [rawFields, setRawFields] = useState<Partial<Record<PolicyField, string>>>({});
 
   const fetchPolicy = useCallback(async () => {
     setLoading(true);
@@ -73,6 +70,7 @@ export default function SettingsPage() {
       const result = await getSessionPolicy();
       setPolicy(result);
       setOriginalPolicy(result);
+      setRawFields({});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar pol\u00edtica');
     } finally {
@@ -86,12 +84,31 @@ export default function SettingsPage() {
     }
   }, [isAuthenticated, canAdminPolicies, fetchPolicy]);
 
-  const handleChange = (field: PolicyField, rawValue: string) => {
-    const value = Number(rawValue);
-    setPolicy((prev) => ({ ...prev, [field]: value }));
+  const getDisplayValue = (field: PolicyField) => rawFields[field] ?? String(policy[field]);
 
-    // Clear field error on change
+  const handleChange = (field: PolicyField, rawValue: string) => {
+    setRawFields((prev) => ({ ...prev, [field]: rawValue }));
+    if (rawValue === '' || rawValue === '-') return;
+
+    const value = Number(rawValue);
+    if (!Number.isNaN(value)) {
+      setPolicy((prev) => ({ ...prev, [field]: value }));
+    }
+
     setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const handleBlur = (field: PolicyField) => {
+    const raw = rawFields[field];
+    if (raw === undefined) return;
+
+    const value = Number(raw);
+    setPolicy((prev) => ({ ...prev, [field]: Number.isNaN(value) ? 0 : value }));
+    setRawFields((prev) => {
       const next = { ...prev };
       delete next[field];
       return next;
@@ -163,7 +180,9 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Configuraci&oacute;n de Sesi&oacute;n</h1>
+        <h1 className="text-2xl font-semibold text-foreground">
+          Configuraci&oacute;n de Sesi&oacute;n
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Define las pol&iacute;ticas de expiraci&oacute;n y concurrencia de sesiones.
         </p>
@@ -174,8 +193,8 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-xl">Pol&iacute;tica de sesiones</CardTitle>
           <CardDescription>
-            Los cambios se aplican a todas las sesiones nuevas. Las sesiones existentes
-            conservan la pol&iacute;tica vigente al momento de su creaci&oacute;n.
+            Los cambios se aplican a todas las sesiones nuevas. Las sesiones existentes conservan la
+            pol&iacute;tica vigente al momento de su creaci&oacute;n.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -201,24 +220,19 @@ export default function SettingsPage() {
 
               {/* Inactivity Timeout */}
               <div className="space-y-2">
-                <Label htmlFor="inactivity-timeout">
-                  Tiempo de inactividad (minutos)
-                </Label>
+                <Label htmlFor="inactivity-timeout">Tiempo de inactividad (minutos)</Label>
                 <Input
                   id="inactivity-timeout"
                   type="number"
                   min={BOUNDS.inactivityTimeoutMinutes.min}
                   max={BOUNDS.inactivityTimeoutMinutes.max}
-                  value={policy.inactivityTimeoutMinutes}
-                  onChange={(e) =>
-                    handleChange('inactivityTimeoutMinutes', e.target.value)
-                  }
+                  value={getDisplayValue('inactivityTimeoutMinutes')}
+                  onChange={(e) => handleChange('inactivityTimeoutMinutes', e.target.value)}
+                  onBlur={() => handleBlur('inactivityTimeoutMinutes')}
                   error={!!fieldErrors.inactivityTimeoutMinutes}
                 />
                 {fieldErrors.inactivityTimeoutMinutes && (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors.inactivityTimeoutMinutes}
-                  </p>
+                  <p className="text-xs text-destructive">{fieldErrors.inactivityTimeoutMinutes}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   Tiempo m&aacute;ximo de inactividad antes de cerrar la sesi&oacute;n
@@ -229,55 +243,45 @@ export default function SettingsPage() {
 
               {/* Max Duration */}
               <div className="space-y-2">
-                <Label htmlFor="max-duration">
-                  Duraci&oacute;n m&aacute;xima (horas)
-                </Label>
+                <Label htmlFor="max-duration">Duraci&oacute;n m&aacute;xima (horas)</Label>
                 <Input
                   id="max-duration"
                   type="number"
                   min={BOUNDS.maxSessionDurationHours.min}
                   max={BOUNDS.maxSessionDurationHours.max}
-                  value={policy.maxSessionDurationHours}
-                  onChange={(e) =>
-                    handleChange('maxSessionDurationHours', e.target.value)
-                  }
+                  value={getDisplayValue('maxSessionDurationHours')}
+                  onChange={(e) => handleChange('maxSessionDurationHours', e.target.value)}
+                  onBlur={() => handleBlur('maxSessionDurationHours')}
                   error={!!fieldErrors.maxSessionDurationHours}
                 />
                 {fieldErrors.maxSessionDurationHours && (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors.maxSessionDurationHours}
-                  </p>
+                  <p className="text-xs text-destructive">{fieldErrors.maxSessionDurationHours}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Duraci&oacute;n m&aacute;xima total de una sesi&oacute;n, incluso activa.
-                  Rango: {BOUNDS.maxSessionDurationHours.min}–{BOUNDS.maxSessionDurationHours.max} horas.
+                  Duraci&oacute;n m&aacute;xima total de una sesi&oacute;n, incluso activa. Rango:{' '}
+                  {BOUNDS.maxSessionDurationHours.min}–{BOUNDS.maxSessionDurationHours.max} horas.
                 </p>
               </div>
 
               {/* Max Concurrent Sessions */}
               <div className="space-y-2">
-                <Label htmlFor="max-concurrent">
-                  Sesiones concurrentes m&aacute;ximas
-                </Label>
+                <Label htmlFor="max-concurrent">Sesiones concurrentes m&aacute;ximas</Label>
                 <Input
                   id="max-concurrent"
                   type="number"
                   min={BOUNDS.maxConcurrentSessions.min}
                   max={BOUNDS.maxConcurrentSessions.max}
-                  value={policy.maxConcurrentSessions}
-                  onChange={(e) =>
-                    handleChange('maxConcurrentSessions', e.target.value)
-                  }
+                  value={getDisplayValue('maxConcurrentSessions')}
+                  onChange={(e) => handleChange('maxConcurrentSessions', e.target.value)}
+                  onBlur={() => handleBlur('maxConcurrentSessions')}
                   error={!!fieldErrors.maxConcurrentSessions}
                 />
                 {fieldErrors.maxConcurrentSessions && (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors.maxConcurrentSessions}
-                  </p>
+                  <p className="text-xs text-destructive">{fieldErrors.maxConcurrentSessions}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Cantidad m&aacute;xima de sesiones activas simult&aacute;neas por usuario.
-                  Rango: {BOUNDS.maxConcurrentSessions.min}–{BOUNDS.maxConcurrentSessions.max}.
+                  Cantidad m&aacute;xima de sesiones activas simult&aacute;neas por usuario. Rango:{' '}
+                  {BOUNDS.maxConcurrentSessions.min}–{BOUNDS.maxConcurrentSessions.max}.
                 </p>
               </div>
             </div>
@@ -285,11 +289,7 @@ export default function SettingsPage() {
         </CardContent>
         <CardFooter className="flex items-center gap-3 border-t border-border pt-6">
           <Button onClick={handleSave} disabled={saving || loading || !hasChanges}>
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Guardar cambios
           </Button>
           <Button

@@ -4,7 +4,7 @@ import { getSidebarNavigationItems } from './sidebar-navigation';
 
 describe('sidebar permission visibility', () => {
   it('shows the full implemented navigation set to admin users', () => {
-    const items = getSidebarNavigationItems(DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN]);
+    const items = getSidebarNavigationItems(DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN]);
 
     expect(items.map((item) => item.href)).toEqual([
       '/dashboard',
@@ -40,8 +40,8 @@ describe('sidebar permission visibility', () => {
     expect(hrefs).not.toContain('/accounting');
   });
 
-  it('shows operational navigation to asistentes and blocks clinical-admin links', () => {
-    const items = getSidebarNavigationItems(DEFAULT_ROLE_PERMISSIONS[BaseRole.ASISTENTE]);
+  it('shows operational navigation to recepcionistas and blocks clinical-admin links', () => {
+    const items = getSidebarNavigationItems(DEFAULT_ROLE_PERMISSIONS[BaseRole.RECEPCIONISTA]);
     const hrefs = items.map((item) => item.href);
 
     expect(hrefs).toEqual(['/dashboard', '/patients', '/appointments', '/treatment-plans', '/billing']);

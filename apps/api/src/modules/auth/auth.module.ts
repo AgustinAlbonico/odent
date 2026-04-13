@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AbilitiesController } from './abilities.controller.js';
+import { ProfileController } from './profile.controller.js';
 import { PasswordModule } from './password/password.module.js';
 import { DatabaseModule } from '../../infra/database/database.module.js';
 import { SecurityModule } from '../security/security.module.js';
@@ -24,7 +25,7 @@ import { SessionPolicyModule } from '../session-policy/session-policy.module.js'
       secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',
     }),
   ],
-  controllers: [AuthController, AbilitiesController],
+  controllers: [AuthController, AbilitiesController, ProfileController],
   providers: [
     AuthService,
     AuthGuard,

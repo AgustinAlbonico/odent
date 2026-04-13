@@ -73,8 +73,7 @@ export enum Scope {
  * Base roles — §18.4 design / §4 PRD.
  */
 export enum BaseRole {
-  ADMIN = 'admin',
+  SUPERADMIN = 'superadmin',
   PROFESIONAL = 'profesional',
-  ASISTENTE = 'asistente',
-  PROFESIONAL_SUPERVISOR = 'profesional_supervisor',
+  RECEPCIONISTA = 'recepcionista',
 }

@@ -57,7 +57,7 @@ describe('Auth runtime contracts', () => {
       extractTenantId: vi.fn().mockReturnValue('tenant-1'),
     };
 
-    const controller = new AuthController(authService as never, tenantService as never);
+    const controller = new AuthController(authService as never, tenantService as never, {} as never);
     const response = {
       cookie: vi.fn(),
       clearCookie: vi.fn(),
@@ -103,7 +103,7 @@ describe('Auth runtime contracts', () => {
       extractTenantId: vi.fn().mockReturnValue(null),
     };
 
-    const controller = new AuthController(authService as never, tenantService as never);
+    const controller = new AuthController(authService as never, tenantService as never, {} as never);
 
     await expect(
       controller.login(

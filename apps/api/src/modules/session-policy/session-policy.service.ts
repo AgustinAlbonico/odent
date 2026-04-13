@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, and } from 'drizzle-orm';
 import { AuditEventType } from '@sistema-odontologico/audit-core';
 import type { SessionPolicyInput } from '@sistema-odontologico/validation';
 import { DatabaseService } from '../../infra/database/database.service.js';
@@ -24,14 +24,14 @@ type SessionPolicyRecord = typeof sessionPolicies.$inferSelect;
 export class SessionPolicyService {
   constructor(private readonly dbService: DatabaseService) {}
 
-  async getRuntimePolicy(): Promise<SessionPolicyInput> {
-    const existingPolicy = await this.findLatestPolicy();
+  async getRuntimePolicy(tenantId: string): Promise<SessionPolicyInput> {
+    const existingPolicy = await this.findLatestPolicy(tenantId);
 
     return existingPolicy ? this.toPolicyDto(existingPolicy) : DEFAULT_SESSION_POLICY;
   }
 
-  async getPolicy(updatedByUserId: string): Promise<SessionPolicyInput> {
-    const existingPolicy = await this.findLatestPolicy();
+  async getPolicy(updatedByUserId: string, tenantId: string): Promise<SessionPolicyInput> {
+    const existingPolicy = await this.findLatestPolicy(tenantId);
 
     if (existingPolicy) {
       return this.toPolicyDto(existingPolicy);
@@ -41,6 +41,7 @@ export class SessionPolicyService {
       .insert(sessionPolicies)
       .values({
         ...DEFAULT_SESSION_POLICY,
+        tenantId,
         updatedBy: updatedByUserId,
         updatedAt: new Date(),
       })
@@ -52,8 +53,9 @@ export class SessionPolicyService {
   async updatePolicy(
     policy: SessionPolicyInput,
     actor: SessionPolicyActorContext,
+    tenantId: string,
   ): Promise<SessionPolicyInput> {
-    const currentPolicy = await this.findLatestPolicy();
+    const currentPolicy = await this.findLatestPolicy(tenantId);
     const now = new Date();
 
     const [savedPolicy] = currentPolicy
@@ -70,12 +72,14 @@ export class SessionPolicyService {
           .insert(sessionPolicies)
           .values({
             ...policy,
+            tenantId,
             updatedBy: actor.userId,
             updatedAt: now,
           })
           .returning();
 
     await this.dbService.db.insert(auditEvents).values({
+      tenantId,
       eventType: AuditEventType.SESSION_POLICY_UPDATED,
       actorId: actor.userId,
       actorEmail: actor.userEmail,
@@ -90,10 +94,11 @@ export class SessionPolicyService {
     return this.toPolicyDto(this.ensurePolicy(savedPolicy));
   }
 
-  private async findLatestPolicy() {
+  private async findLatestPolicy(tenantId: string) {
     const [policy] = await this.dbService.db
       .select()
       .from(sessionPolicies)
+      .where(eq(sessionPolicies.tenantId, tenantId))
       .orderBy(desc(sessionPolicies.updatedAt))
       .limit(1);
 

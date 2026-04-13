@@ -1,4 +1,4 @@
-import { type PermissionEntry } from '@sistema-odontologico/permissions';
+import type { PermissionEntry } from '@sistema-odontologico/permissions';
 
 /**
  * Typed API client for authentication endpoints.
@@ -20,6 +20,11 @@ export interface AuthUser {
   role: string;
   tenantId: string;
   mustChangePassword: boolean;
+  photoUrl?: string | null;
+  phone?: string | null;
+  licenseNumber?: string | null;
+  specialty?: string | null;
+  dni?: string | null;
 }
 
 export type Ability = PermissionEntry;
@@ -97,9 +102,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   // Handle 401 with automatic token refresh
   if (
-    res.status === 401
-    && !path.includes('/api/auth/refresh')
-    && !path.includes('/api/auth/login')
+    res.status === 401 &&
+    !path.includes('/api/auth/refresh') &&
+    !path.includes('/api/auth/login')
   ) {
     const refreshed = await tryRefreshToken();
     if (refreshed) {
@@ -118,7 +123,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       }
       // Retry failed — fall through to error handling below
     }
-    // Refresh failed — fall through to error handling below
   }
 
   if (!res.ok) {
@@ -155,7 +159,8 @@ function normalizePaginatedResponse<T>(
   const meta = raw.meta ?? {};
   const page = toPositiveNumber(meta.page ?? raw.page, fallbackPage);
   const pageSize = toPositiveNumber(meta.pageSize ?? raw.pageSize, fallbackPageSize);
-  const total = toPositiveNumber(meta.total ?? raw.total, data.length || 1) - (data.length === 0 ? 1 : 0);
+  const total =
+    toPositiveNumber(meta.total ?? raw.total, data.length || 1) - (data.length === 0 ? 1 : 0);
   const normalizedTotal = data.length === 0 ? 0 : total;
   const totalPages = toPositiveNumber(
     meta.totalPages ?? raw.totalPages,
@@ -244,6 +249,32 @@ export async function forceChangePassword(
   });
 }
 
+/** Change own password (authenticated user). */
+export async function changePassword(data: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<{ message: string }> {
+  return request<{ message: string }>('/api/auth/password/change', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Update own profile data. */
+export async function updateMyProfile(data: {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  licenseNumber?: string;
+  specialty?: string;
+  dni?: string;
+}): Promise<{ message: string }> {
+  return request<{ message: string }>('/api/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 /** Get current user abilities (used by context provider). */
 export async function getAbilities(): Promise<AbilitiesResponse> {
   return request<AbilitiesResponse>('/api/auth/abilities');
@@ -319,49 +350,37 @@ export interface PermissionReview {
   module: string;
   action: string;
   scope: string;
-  period: string;
-  status: 'pending' | 'confirmed' | 'revoked' | 'expired';
+  assignedBy: string;
+  assignedAt: string;
+  status: string;
+}
+
+export interface MutualCatalogItem {
+  id: string;
+  name: string;
+  code: string;
+  phone: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfessionalMutual {
+  id: string;
+  professionalId: string;
+  mutualId: string;
+  mutualName?: string;
+  mutualCode?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /* ------------------------------------------------------------------ */
-/* Admin API — Personal Access History                                 */
+/* Admin API — Audit & Security                                        */
 /* ------------------------------------------------------------------ */
 
-/** Get the current user's own access events (paginated). */
-export async function getPersonalAccessHistory(
-  page = 1,
-  pageSize = 20,
-): Promise<PaginatedResponse<PersonalAccessEvent>> {
-  const response = await request<unknown>(`/api/admin/audit/personal?page=${page}&pageSize=${pageSize}`);
-  return normalizePaginatedResponse<PersonalAccessEvent>(response, page, pageSize);
-}
-
-/* ------------------------------------------------------------------ */
-/* Admin API — Sessions                                                */
-/* ------------------------------------------------------------------ */
-
-/** List all active sessions (admin). */
-export async function getActiveSessions(
-  page = 1,
-  pageSize = 20,
-): Promise<PaginatedResponse<ActiveSession>> {
-  const response = await request<unknown>(`/api/admin/sessions?page=${page}&pageSize=${pageSize}`);
-  return normalizePaginatedResponse<ActiveSession>(response, page, pageSize);
-}
-
-/** Close (delete) a specific session by ID. */
-export async function closeSession(sessionId: string): Promise<void> {
-  return request<void>(`/api/admin/sessions/${sessionId}`, {
-    method: 'DELETE',
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Admin API — Audit Log                                               */
-/* ------------------------------------------------------------------ */
-
-/** Get audit log entries with filters (admin). */
-export async function getAuditLog(
+export async function getAuditLogs(
   filters: AuditFilters = {},
 ): Promise<PaginatedResponse<AuditLogEntry>> {
   const params = new URLSearchParams();
@@ -371,95 +390,51 @@ export async function getAuditLog(
   if (filters.actorId) params.set('actorId', filters.actorId);
   if (filters.page) params.set('page', String(filters.page));
   if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+
   const qs = params.toString();
-  const response = await request<unknown>(`/api/admin/audit${qs ? `?${qs}` : ''}`);
-  return normalizePaginatedResponse<AuditLogEntry>(response, filters.page ?? 1, filters.pageSize ?? 20);
+  const raw = await request<unknown>(`/api/admin/audit${qs ? `?${qs}` : ''}`);
+  return normalizePaginatedResponse<AuditLogEntry>(raw, 1, 20);
 }
 
-/** Export audit log as CSV (triggers download). */
-export async function exportAuditLog(filters: AuditFilters = {}): Promise<void> {
-  const params = new URLSearchParams();
-  if (filters.eventType) params.set('eventType', filters.eventType);
-  if (filters.from) params.set('from', filters.from);
-  if (filters.to) params.set('to', filters.to);
-  if (filters.actorId) params.set('actorId', filters.actorId);
-  const qs = params.toString();
-  const res = await fetch(`${API_BASE}/api/admin/audit/export${qs ? `?${qs}` : ''}`, {
-    credentials: 'include',
+export async function getPersonalAccessLog(): Promise<PersonalAccessEvent[]> {
+  return request<PersonalAccessEvent[]>('/api/admin/audit/personal-access');
+}
+
+/** Get active sessions for the admin dashboard. */
+export async function getActiveSessions(): Promise<ActiveSession[]> {
+  return request<ActiveSession[]>('/api/admin/audit/sessions');
+}
+
+/** Force-terminate a session by ID. Requires ADMIN_POLICIES scope. */
+export async function terminateSession(sessionId: string): Promise<void> {
+  return request<void>(`/api/admin/audit/sessions/${sessionId}`, {
+    method: 'DELETE',
   });
-  if (!res.ok) throw new ApiClientError(res.status, 'Export failed');
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
 }
 
-/* ------------------------------------------------------------------ */
-/* Admin API — Session Policy                                          */
-/* ------------------------------------------------------------------ */
-
-/** Get current session policy. */
+/** Get session policy configuration. */
 export async function getSessionPolicy(): Promise<SessionPolicy> {
   return request<SessionPolicy>('/api/admin/session-policy');
 }
 
-/** Update session policy. */
-export async function updateSessionPolicy(
-  policy: SessionPolicy,
-): Promise<SessionPolicy> {
+/** Update session policy configuration. */
+export async function updateSessionPolicy(data: Partial<SessionPolicy>): Promise<SessionPolicy> {
   return request<SessionPolicy>('/api/admin/session-policy', {
     method: 'PUT',
-    body: JSON.stringify(policy),
+    body: JSON.stringify(data),
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Admin API — Permission Reviews                                      */
-/* ------------------------------------------------------------------ */
-
 /** Get pending permission reviews. */
-export async function getPermissionReviews(
-  page = 1,
-  pageSize = 20,
-): Promise<PaginatedResponse<PermissionReview>> {
-  const response = await request<unknown>(`/api/admin/permission-reviews?page=${page}&pageSize=${pageSize}`);
-  return normalizePaginatedResponse<PermissionReview>(response, page, pageSize);
+export async function getPermissionReviews(): Promise<PermissionReview[]> {
+  return request<PermissionReview[]>('/api/admin/permission-reviews');
 }
 
-/** Generate a new review cycle. */
-export async function generatePermissionReviews(): Promise<{
-  message: string;
-  count: number;
-}> {
-  return request<{ message: string; count: number }>(
-    '/api/admin/permission-reviews/generate',
-    { method: 'POST' },
-  );
-}
-
-/** Confirm a permission review. */
-export async function confirmPermissionReview(
-  reviewId: string,
-): Promise<PermissionReview> {
-  return request<PermissionReview>(
-    `/api/admin/permission-reviews/${reviewId}/confirm`,
-    { method: 'PATCH' },
-  );
-}
-
-/** Revoke a permission review. */
-export async function revokePermissionReview(
-  reviewId: string,
-): Promise<PermissionReview> {
-  return request<PermissionReview>(
-    `/api/admin/permission-reviews/${reviewId}/revoke`,
-    { method: 'PATCH' },
-  );
+/** Acknowledge a permission review. */
+export async function acknowledgePermissionReview(reviewId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/admin/permission-reviews/${reviewId}/acknowledge`, {
+    method: 'POST',
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -473,62 +448,186 @@ export interface UserListItem {
   lastName: string;
   role: string;
   state: string;
-  mustChangePassword: boolean;
   lastLoginAt: string | null;
+  photoUrl: string | null;
   createdAt: string;
 }
 
-export interface UserDetail extends UserListItem {
-  tokenVersion: number;
+export interface UserDetail {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  state: string;
+  mustChangePassword: boolean;
   failedLoginAttempts: number;
   lockedUntil: string | null;
+  tokenVersion: number;
+  lastLoginAt: string | null;
+  photoUrl: string | null;
+  createdAt: string;
   updatedAt: string;
-  customPermissions: UserPermissionItem[];
 }
 
-export interface UserPermissionItem {
-  id: string;
-  module: string;
-  action: string;
-  scope: string;
-}
-
-export interface UserPermissionsResponse {
-  custom: UserPermissionItem[];
-  inherited: {
-    role: string;
-    permissions: Array<{ module: string; action: string; scope: string }>;
-  };
-}
+export type ProfessionalListItem = UserListItem;
+export type ProfessionalDetail = UserDetail;
 
 export interface UsersFilters {
+  search?: string;
   role?: string;
   state?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ProfessionalsFilters {
   search?: string;
   page?: number;
   limit?: number;
 }
 
-export async function getUsers(filters: UsersFilters = {}): Promise<PaginatedResponse<UserListItem>> {
+export interface UserPermissionsResponse {
+  custom: {
+    id: string;
+    module: string;
+    action: string;
+    scope: string;
+  }[];
+  inherited: {
+    role: string;
+    permissions: {
+      module: string;
+      action: string;
+      scope: string;
+    }[];
+  };
+}
+
+export async function getUsers(
+  filters: UsersFilters = {},
+): Promise<PaginatedResponse<UserListItem>> {
   const params = new URLSearchParams();
+  if (filters.search) params.set('search', filters.search);
   if (filters.role) params.set('role', filters.role);
   if (filters.state) params.set('state', filters.state);
-  if (filters.search) params.set('search', filters.search);
   if (filters.page) params.set('page', String(filters.page));
   if (filters.limit) params.set('limit', String(filters.limit));
   const qs = params.toString();
   const response = await request<unknown>(`/api/admin/users${qs ? `?${qs}` : ''}`);
   const raw = response as Record<string, unknown>;
-  const users = (raw.users ?? raw.data ?? []) as UserListItem[];
+  const data = (raw.data ?? []) as UserListItem[];
   const total = (raw.total ?? 0) as number;
   const page = (raw.page ?? 1) as number;
   const limit = (raw.limit ?? raw.pageSize ?? 20) as number;
   const totalPages = (raw.totalPages ?? 1) as number;
-  return { data: users, total, page, pageSize: limit, totalPages };
+  return { data, total, page, pageSize: limit, totalPages };
 }
 
 export async function getUser(userId: string): Promise<UserDetail> {
   return request<UserDetail>(`/api/admin/users/${userId}`);
+}
+
+export async function getProfessionalsList(
+  filters: ProfessionalsFilters = {},
+): Promise<PaginatedResponse<ProfessionalListItem>> {
+  const params = new URLSearchParams();
+  if (filters.search) params.set('search', filters.search);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const qs = params.toString();
+  const response = await request<unknown>(`/api/admin/professionals${qs ? `?${qs}` : ''}`);
+  const raw = response as Record<string, unknown>;
+  const data = (raw.data ?? []) as ProfessionalListItem[];
+  const total = (raw.total ?? 0) as number;
+  const page = (raw.page ?? 1) as number;
+  const limit = (raw.limit ?? raw.pageSize ?? 20) as number;
+  const totalPages = (raw.totalPages ?? 1) as number;
+  return { data, total, page, pageSize: limit, totalPages };
+}
+
+export async function getProfessional(professionalId: string): Promise<ProfessionalDetail> {
+  return request<ProfessionalDetail>(`/api/admin/professionals/${professionalId}`);
+}
+
+export async function uploadProfessionalPhoto(
+  professionalId: string,
+  file: Blob,
+): Promise<{ photoUrl: string }> {
+  const formData = new FormData();
+  formData.append('photo', file, 'photo.webp');
+
+  const res = await fetch(`${API_BASE}/api/admin/professionals/${professionalId}/photo`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+    // NOTE: Do NOT set Content-Type — browser sets it automatically with boundary for multipart/form-data
+  });
+
+  if (res.status === 401) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      const retryRes = await fetch(`${API_BASE}/api/admin/professionals/${professionalId}/photo`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (retryRes.ok) return retryRes.json();
+      const body = await retryRes.json().catch(() => ({}));
+      throw body;
+    }
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw body;
+  }
+
+  return res.json();
+}
+
+export async function deleteProfessionalPhoto(professionalId: string): Promise<void> {
+  return request<void>(`/api/admin/professionals/${professionalId}/photo`, {
+    method: 'DELETE',
+  });
+}
+
+export async function uploadMyPhoto(file: Blob): Promise<{ photoUrl: string }> {
+  const formData = new FormData();
+  formData.append('photo', file, 'photo.webp');
+
+  const res = await fetch(`${API_BASE}/api/professionals/me/photo`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      const retryRes = await fetch(`${API_BASE}/api/professionals/me/photo`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (retryRes.ok) return retryRes.json();
+      const body = await retryRes.json().catch(() => ({}));
+      throw body;
+    }
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw body;
+  }
+
+  return res.json();
+}
+
+export async function deleteMyPhoto(): Promise<void> {
+  return request<void>('/api/professionals/me/photo', {
+    method: 'DELETE',
+  });
 }
 
 export async function createUser(data: {
@@ -536,8 +635,7 @@ export async function createUser(data: {
   firstName: string;
   lastName: string;
   role: string;
-  state?: string;
-  mustChangePassword?: boolean;
+  state: string;
 }): Promise<UserDetail> {
   return request<UserDetail>('/api/admin/users', {
     method: 'POST',
@@ -545,13 +643,15 @@ export async function createUser(data: {
   });
 }
 
-export async function updateUser(userId: string, data: {
-  firstName?: string;
-  lastName?: string;
-  role?: string;
-  state?: string;
-  mustChangePassword?: boolean;
-}): Promise<UserDetail> {
+export async function updateUser(
+  userId: string,
+  data: {
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+    state?: string;
+  },
+): Promise<UserDetail> {
   return request<UserDetail>(`/api/admin/users/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
@@ -565,10 +665,9 @@ export async function changeUserState(userId: string, state: string): Promise<Us
   });
 }
 
-export async function forceUserPasswordChange(userId: string): Promise<{ success: boolean }> {
-  return request<{ success: boolean }>(`/api/admin/users/${userId}/force-password`, {
-    method: 'PATCH',
-    body: JSON.stringify({ mustChangePassword: true }),
+export async function forceUserPasswordChange(userId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/admin/users/${userId}/force-password-change`, {
+    method: 'POST',
   });
 }
 
@@ -576,26 +675,293 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
   return request<UserPermissionsResponse>(`/api/admin/users/${userId}/permissions`);
 }
 
-export async function updateUserPermissions(userId: string, permissions: Array<{ module: string; action: string; scope: string }>): Promise<UserPermissionItem[]> {
-  return request<UserPermissionItem[]>(`/api/admin/users/${userId}/permissions`, {
-    method: 'PUT',
-    body: JSON.stringify({ permissions }),
+/* ------------------------------------------------------------------ */
+/* Admin API — Patient Management                                      */
+/* ------------------------------------------------------------------ */
+
+export interface PatientListItem {
+  id: string;
+  dni: string | null;
+  firstName: string;
+  lastName: string;
+  sex: 'male' | 'female' | 'other' | null;
+  email: string | null;
+  phone: string | null;
+  birthDate: string | null;
+  state: 'active' | 'inactive';
+  createdAt: string;
+}
+
+export interface PatientDetail extends PatientListItem {
+  bloodGroup: 'A' | 'B' | 'AB' | 'O' | null;
+  rhFactor: 'positive' | 'negative' | null;
+  address: string | null;
+  postalCode: string | null;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export interface PatientDetail extends PatientListItem {
+  address: string | null;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export interface PatientMutual {
+  id: string;
+  patientId: string;
+  mutualId: string;
+  mutualName?: string;
+  mutualCode?: string;
+  planName: string | null;
+  affiliateNumber: string;
+  coveragePercent: number | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientsFilters {
+  search?: string;
+  state?: 'active' | 'inactive';
+  page?: number;
+  limit?: number;
+}
+
+export async function getPatients(
+  filters: PatientsFilters = {},
+): Promise<PaginatedResponse<PatientListItem>> {
+  const params = new URLSearchParams();
+  if (filters.search) params.set('search', filters.search);
+  if (filters.state) params.set('state', filters.state);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const qs = params.toString();
+  const response = await request<unknown>(`/api/admin/patients${qs ? `?${qs}` : ''}`);
+  const raw = response as Record<string, unknown>;
+  const data = (raw.data ?? []) as PatientListItem[];
+  const total = (raw.total ?? 0) as number;
+  const page = (raw.page ?? 1) as number;
+  const limit = (raw.limit ?? raw.pageSize ?? 20) as number;
+  const totalPages = (raw.totalPages ?? 1) as number;
+  return { data, total, page, pageSize: limit, totalPages };
+}
+
+export async function getPatient(patientId: string): Promise<PatientDetail> {
+  return request<PatientDetail>(`/api/admin/patients/${patientId}`);
+}
+
+export async function createPatient(data: {
+  dni?: string;
+  firstName: string;
+  lastName: string;
+  sex?: 'male' | 'female' | 'other';
+  email?: string;
+  phone?: string;
+  birthDate?: string;
+  bloodGroup?: 'A' | 'B' | 'AB' | 'O';
+  rhFactor?: 'positive' | 'negative';
+  address?: string;
+  postalCode?: string;
+  notes?: string;
+}): Promise<PatientDetail> {
+  return request<PatientDetail>('/api/admin/patients', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 
-export async function deleteUserPermission(userId: string, permissionId: string): Promise<{ success: boolean }> {
-  return request<{ success: boolean }>(`/api/admin/users/${userId}/permissions/${permissionId}`, {
+export async function updatePatient(
+  patientId: string,
+  data: {
+    dni?: string;
+    firstName?: string;
+    lastName?: string;
+    sex?: 'male' | 'female' | 'other';
+    email?: string;
+    phone?: string;
+    birthDate?: string;
+    bloodGroup?: 'A' | 'B' | 'AB' | 'O';
+    rhFactor?: 'positive' | 'negative';
+    address?: string;
+    postalCode?: string;
+    notes?: string;
+  },
+): Promise<PatientDetail> {
+  return request<PatientDetail>(`/api/admin/patients/${patientId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function changePatientState(
+  patientId: string,
+  state: 'active' | 'inactive',
+): Promise<PatientDetail> {
+  return request<PatientDetail>(`/api/admin/patients/${patientId}/state`, {
+    method: 'PATCH',
+    body: JSON.stringify({ state }),
+  });
+}
+
+export async function getPatientMutuals(patientId: string): Promise<PatientMutual[]> {
+  return request<PatientMutual[]>(`/api/admin/patients/${patientId}/mutuals`);
+}
+
+export async function addPatientMutual(
+  patientId: string,
+  data: {
+    mutualId: string;
+    planName?: string;
+    affiliateNumber: string;
+    coveragePercent?: number;
+    isActive?: boolean;
+  },
+): Promise<PatientMutual> {
+  return request<PatientMutual>(`/api/admin/patients/${patientId}/mutuals`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updatePatientMutual(
+  patientId: string,
+  mutualLinkId: string,
+  data: {
+    planName?: string;
+    affiliateNumber?: string;
+    coveragePercent?: number;
+    isActive?: boolean;
+  },
+): Promise<PatientMutual> {
+  return request<PatientMutual>(`/api/admin/patients/${patientId}/mutuals/${mutualLinkId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removePatientMutual(patientId: string, mutualId: string): Promise<void> {
+  return request<void>(`/api/admin/patients/${patientId}/mutuals/${mutualId}`, {
     method: 'DELETE',
   });
 }
 
-// ─── Password Change (self-service) ──────────────────
-export async function changePassword(data: {
-  currentPassword: string;
-  newPassword: string;
-}): Promise<void> {
-  return request<void>('/api/auth/password/change', {
+/* ------------------------------------------------------------------ */
+/* Mutuals Catalog API                                                 */
+/* ------------------------------------------------------------------ */
+
+export interface MutualsFilters {
+  search?: string;
+  includeInactive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export async function getMutuals(
+  filters: MutualsFilters = {},
+): Promise<PaginatedResponse<MutualCatalogItem>> {
+  const params = new URLSearchParams();
+  if (filters.search) params.set('search', filters.search);
+  if (filters.includeInactive) params.set('includeInactive', 'true');
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const qs = params.toString();
+  const response = await request<unknown>(`/api/admin/mutuals${qs ? `?${qs}` : ''}`);
+  const raw = response as Record<string, unknown>;
+  const data = (raw.data ?? []) as MutualCatalogItem[];
+  const total = (raw.total ?? 0) as number;
+  const page = (raw.page ?? 1) as number;
+  const limit = (raw.limit ?? raw.pageSize ?? 20) as number;
+  const totalPages = (raw.totalPages ?? 1) as number;
+  return { data, total, page, pageSize: limit, totalPages };
+}
+
+export async function getMutualById(id: string): Promise<MutualCatalogItem> {
+  return request<MutualCatalogItem>(`/api/admin/mutuals/${id}`);
+}
+
+export async function createMutual(data: {
+  name: string;
+  code: string;
+  phone?: string;
+}): Promise<MutualCatalogItem> {
+  return request<MutualCatalogItem>('/api/admin/mutuals', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export async function updateMutual(
+  id: string,
+  data: {
+    name?: string;
+    code?: string;
+    phone?: string;
+  },
+): Promise<MutualCatalogItem> {
+  return request<MutualCatalogItem>(`/api/admin/mutuals/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMutual(id: string): Promise<MutualCatalogItem> {
+  return request<MutualCatalogItem>(`/api/admin/mutuals/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Professional Mutuals API                                            */
+/* ------------------------------------------------------------------ */
+
+export async function getProfessionalMutuals(
+  professionalId: string,
+): Promise<ProfessionalMutual[]> {
+  return request<ProfessionalMutual[]>(`/api/admin/professionals/${professionalId}/mutuals`);
+}
+
+export async function addProfessionalMutual(
+  professionalId: string,
+  data: {
+    mutualId: string;
+  },
+): Promise<ProfessionalMutual> {
+  return request<ProfessionalMutual>(`/api/admin/professionals/${professionalId}/mutuals`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeProfessionalMutual(
+  professionalId: string,
+  mutualId: string,
+): Promise<void> {
+  return request<void>(`/api/admin/professionals/${professionalId}/mutuals/${mutualId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Lightweight global search for patients — used by the header search bar.
+ * Returns up to 8 results matching DNI, name, or lastname.
+ */
+export interface PatientSearchResult {
+  id: string;
+  dni: string | null;
+  firstName: string;
+  lastName: string;
+  state: 'active' | 'inactive';
+}
+
+export async function searchPatientsGlobal(query: string): Promise<PatientSearchResult[]> {
+  if (!query.trim()) return [];
+  const params = new URLSearchParams();
+  params.set('search', query.trim());
+  params.set('limit', '8');
+  params.set('page', '1');
+  const response = await request<unknown>(`/api/admin/patients?${params.toString()}`);
+  const raw = response as Record<string, unknown>;
+  const data = (raw.data ?? []) as PatientSearchResult[];
+  return data;
 }

@@ -32,12 +32,10 @@ export class PermissionReviewService {
   async generateReviews(
     periodStart: Date,
     periodEnd: Date,
-    adminUser: { sub: string; email: string; ip: string; userAgent: string },
+    adminUser: { sub: string; email: string; tid: string; ip: string; userAgent: string },
   ): Promise<{ generated: number; skipped: number }> {
     // Find all active user permissions
-    const allPermissions = await this.dbService.db
-      .select()
-      .from(userPermissions);
+    const allPermissions = await this.dbService.db.select().from(userPermissions);
 
     // Check which permissions already have a review in this period
     const existingReviews = await this.dbService.db
@@ -74,6 +72,7 @@ export class PermissionReviewService {
 
     // Audit: reviews generated
     await this.dbService.db.insert(auditEvents).values({
+      tenantId: adminUser.tid,
       eventType: AuditEventType.PERMISSION_GRANTED, // reuse: permission_review cycle initiated
       actorId: adminUser.sub,
       actorEmail: adminUser.email,
@@ -98,7 +97,7 @@ export class PermissionReviewService {
   async confirmReview(
     reviewId: string,
     notes: string | undefined,
-    adminUser: { sub: string; email: string; ip: string; userAgent: string },
+    adminUser: { sub: string; email: string; tid: string; ip: string; userAgent: string },
   ) {
     // Fetch the review
     const [review] = await this.dbService.db
@@ -143,6 +142,7 @@ export class PermissionReviewService {
 
     // Audit trail
     await this.dbService.db.insert(auditEvents).values({
+      tenantId: adminUser.tid,
       eventType: AuditEventType.PERMISSION_REVIEW_CONFIRMED,
       actorId: adminUser.sub,
       actorEmail: adminUser.email,
@@ -169,7 +169,7 @@ export class PermissionReviewService {
   async revokeReview(
     reviewId: string,
     notes: string | undefined,
-    adminUser: { sub: string; email: string; ip: string; userAgent: string },
+    adminUser: { sub: string; email: string; tid: string; ip: string; userAgent: string },
   ) {
     // Fetch the review
     const [review] = await this.dbService.db
@@ -219,6 +219,7 @@ export class PermissionReviewService {
 
     // Audit trail
     await this.dbService.db.insert(auditEvents).values({
+      tenantId: adminUser.tid,
       eventType: AuditEventType.PERMISSION_REVIEW_REVOKED,
       actorId: adminUser.sub,
       actorEmail: adminUser.email,
@@ -250,17 +251,19 @@ export class PermissionReviewService {
     const expired = await this.dbService.db
       .update(permissionReviews)
       .set({ status: 'expired' })
-      .where(
-        and(
-          eq(permissionReviews.status, 'pending'),
-          lt(permissionReviews.periodEnd, now),
-        ),
-      )
-      .returning({ id: permissionReviews.id });
+      .where(and(eq(permissionReviews.status, 'pending'), lt(permissionReviews.periodEnd, now)))
+      .returning({ id: permissionReviews.id, userId: permissionReviews.userId });
 
-    // Audit each expired review
+    // Audit each expired review — look up user's tenant for proper isolation
     for (const review of expired) {
+      const [targetUser] = await this.dbService.db
+        .select({ tenantId: users.tenantId })
+        .from(users)
+        .where(eq(users.id, review.userId))
+        .limit(1);
+
       await this.dbService.db.insert(auditEvents).values({
+        tenantId: targetUser?.tenantId ?? 'system',
         eventType: AuditEventType.PERMISSION_REVIEW_EXPIRED,
         actorId: 'system',
         actorEmail: 'system',
@@ -289,7 +292,10 @@ export class PermissionReviewService {
     const { status, periodStart, periodEnd, page = 1, pageSize = 50 } = filters;
 
     const conditions = [];
-    if (status) conditions.push(eq(permissionReviews.status, status as typeof reviewStatusEnum.enumValues[number]));
+    if (status)
+      conditions.push(
+        eq(permissionReviews.status, status as (typeof reviewStatusEnum.enumValues)[number]),
+      );
     if (periodStart) conditions.push(gte(permissionReviews.periodStart, new Date(periodStart)));
     if (periodEnd) conditions.push(lte(permissionReviews.periodEnd, new Date(periodEnd)));
 

@@ -57,7 +57,7 @@ export class UsersController {
       });
     }
 
-    return this.usersService.listUsers(parsed.data);
+    return this.usersService.listUsers(parsed.data, user.tid);
   }
 
   // ─── GET /admin/users/:userId — Get user detail ───────
@@ -69,7 +69,7 @@ export class UsersController {
     const user = (req as any).user;
     if (!user) throw new UnauthorizedException();
 
-    return this.usersService.getUserById(userId);
+    return this.usersService.getUserById(userId, user.tid);
   }
 
   // ─── POST /admin/users — Create user ──────────────────
@@ -210,6 +210,7 @@ export class UsersController {
       { sub: user.sub, email: user.email ?? '' },
       req.ip ?? 'unknown',
       req.get('user-agent') ?? 'unknown',
+      user.tid,
     );
   }
 
@@ -225,7 +226,7 @@ export class UsersController {
     const user = (req as any).user;
     if (!user) throw new UnauthorizedException();
 
-    return this.usersService.getUserPermissions(userId);
+    return this.usersService.getUserPermissions(userId, user.tid);
   }
 
   // ─── PUT /admin/users/:userId/permissions ─────────────
@@ -256,6 +257,7 @@ export class UsersController {
       { sub: user.sub, email: user.email ?? '' },
       req.ip ?? 'unknown',
       req.get('user-agent') ?? 'unknown',
+      user.tid,
     );
   }
 
@@ -278,6 +280,7 @@ export class UsersController {
       { sub: user.sub, email: user.email ?? '' },
       req.ip ?? 'unknown',
       req.get('user-agent') ?? 'unknown',
+      user.tid,
     );
   }
 }

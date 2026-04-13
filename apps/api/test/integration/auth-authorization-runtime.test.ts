@@ -137,7 +137,7 @@ describe('Auth guard runtime authorization proofs', () => {
       email: 'user@test.com',
       tid: 'tenant-1',
       schema: 'tenant_tenant_1',
-      role: 'admin',
+      role: 'superadmin',
       tokenVersion: 0,
       mustChangePassword: false,
       sid: 'session-1',
@@ -203,7 +203,7 @@ describe('Auth guard runtime authorization proofs', () => {
       },
     ]);
     vi.spyOn(permissionsService, 'resolvePermissions').mockResolvedValue(
-      DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN],
+      DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN],
     );
 
     const response = await request(app.getHttpServer())
@@ -238,7 +238,7 @@ describe('Auth guard runtime authorization proofs', () => {
       },
     ]);
     vi.spyOn(permissionsService, 'resolvePermissions').mockResolvedValue(
-      DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN],
+      DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN],
     );
 
     const response = await request(app.getHttpServer())

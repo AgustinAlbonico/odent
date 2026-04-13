@@ -21,15 +21,7 @@ import {
   type AuditFilters,
   type PaginatedResponse,
 } from '@/lib/auth/api';
-import {
-  Shield,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  Download,
-  Search,
-  Filter,
-} from 'lucide-react';
+import { Shield, ChevronLeft, ChevronRight, Loader2, Download, Search, Filter } from 'lucide-react';
 import { Action, Module } from '@sistema-odontologico/permissions';
 
 /* ------------------------------------------------------------------ */
@@ -76,14 +68,10 @@ function formatMetadata(meta: Record<string, unknown>): string {
 }
 
 function eventTypeBadgeVariant(event: string) {
-  if (event.includes('failed') || event.includes('delete'))
-    return 'destructive' as const;
-  if (event.includes('create') || event.includes('login'))
-    return 'success' as const;
-  if (event.includes('update') || event.includes('assign'))
-    return 'info' as const;
-  if (event.includes('revoke') || event.includes('close'))
-    return 'warning' as const;
+  if (event.includes('failed') || event.includes('delete')) return 'destructive' as const;
+  if (event.includes('create') || event.includes('login')) return 'success' as const;
+  if (event.includes('update') || event.includes('assign')) return 'info' as const;
+  if (event.includes('revoke') || event.includes('close')) return 'warning' as const;
   return 'default' as const;
 }
 
@@ -196,11 +184,7 @@ export default function AuditPage() {
             Historial completo de eventos del sistema.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleExport}
-          disabled={exporting}
-        >
+        <Button variant="outline" onClick={handleExport} disabled={exporting}>
           {exporting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -340,21 +324,17 @@ export default function AuditPage() {
                     {data?.data.map((entry) => (
                       <tr
                         key={entry.id}
-                        className="border-b border-border transition-colors hover:bg-muted/50"
+                        className="border-b border-border transition-colors duration-150 ease-out hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 text-sm font-mono tabular-nums">
                           {formatDate(entry.timestamp)}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          <Badge variant={eventTypeBadgeVariant(entry.event)}>
-                            {entry.event}
-                          </Badge>
+                          <Badge variant={eventTypeBadgeVariant(entry.event)}>{entry.event}</Badge>
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <div className="font-medium">{entry.actorEmail}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {entry.actorId}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{entry.actorId}</div>
                         </td>
                         <td className="px-4 py-3 text-sm font-mono tabular-nums">
                           {entry.ipAddress}

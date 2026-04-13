@@ -63,9 +63,8 @@ export declare enum Scope {
  * Base roles — §18.4 design / §4 PRD.
  */
 export declare enum BaseRole {
-    ADMIN = "admin",
+    SUPERADMIN = "superadmin",
     PROFESIONAL = "profesional",
-    ASISTENTE = "asistente",
-    PROFESIONAL_SUPERVISOR = "profesional_supervisor"
+    RECEPCIONISTA = "recepcionista"
 }
 //# sourceMappingURL=enums.d.ts.map

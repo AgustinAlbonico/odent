@@ -2,8 +2,8 @@ import {
   Action,
   BaseRole,
   Module,
-  Scope,
   type PermissionEntry,
+  Scope,
 } from '@sistema-odontologico/permissions';
 
 export const LANDING_PATH_COOKIE = 'so_landing_path';
@@ -60,25 +60,50 @@ const PROTECTED_ROUTE_POLICIES: ProtectedRoutePolicy[] = [
     path: '/users',
     anyOf: [{ module: Module.USERS_ROLES_PERMISSIONS, actions: [Action.ADMIN_USERS] }],
   },
+  {
+    path: '/patients',
+    anyOf: [{ module: Module.PATIENTS, actions: [Action.VIEW_LIST, Action.VIEW_DETAIL] }],
+  },
+  {
+    path: '/professionals',
+    anyOf: [{ module: Module.PROFESSIONALS, actions: [Action.VIEW_LIST, Action.VIEW_DETAIL] }],
+  },
 ];
 
 const LANDING_PRIORITY_BY_ROLE: Record<string, string[]> = {
-  [BaseRole.ADMIN]: ['/settings', '/sessions', '/audit', '/users', '/permission-reviews', '/dashboard', '/security'],
-  [BaseRole.PROFESIONAL]: ['/dashboard', '/security', '/audit', '/settings', '/sessions', '/users', '/permission-reviews'],
-  [BaseRole.ASISTENTE]: ['/dashboard', '/security', '/sessions', '/settings', '/audit', '/users', '/permission-reviews'],
-  [BaseRole.PROFESIONAL_SUPERVISOR]: ['/dashboard', '/security', '/audit', '/sessions', '/settings', '/users', '/permission-reviews'],
+  [BaseRole.SUPERADMIN]: [
+    '/settings',
+    '/sessions',
+    '/audit',
+    '/users',
+    '/permission-reviews',
+    '/dashboard',
+    '/security',
+  ],
+  [BaseRole.PROFESIONAL]: [
+    '/dashboard',
+    '/security',
+    '/audit',
+    '/settings',
+    '/sessions',
+    '/users',
+    '/permission-reviews',
+  ],
+  [BaseRole.RECEPCIONISTA]: [
+    '/dashboard',
+    '/security',
+    '/sessions',
+    '/settings',
+    '/audit',
+    '/users',
+    '/permission-reviews',
+  ],
 };
 
-function hasAbility(
-  abilities: PermissionEntry[],
-  module: Module,
-  action: Action,
-): boolean {
+function hasAbility(abilities: PermissionEntry[], module: Module, action: Action): boolean {
   return abilities.some(
     (ability) =>
-      ability.module === module &&
-      ability.action === action &&
-      ability.scope !== Scope.NONE,
+      ability.module === module && ability.action === action && ability.scope !== Scope.NONE,
   );
 }
 
@@ -95,7 +120,16 @@ function canAccessPolicy(policy: ProtectedRoutePolicy, abilities: PermissionEntr
 }
 
 function getLandingOrder(role: RoleLike): string[] {
-  return LANDING_PRIORITY_BY_ROLE[String(role ?? '').toLowerCase()] ?? ['/dashboard', '/security', '/settings', '/sessions', '/audit', '/permission-reviews'];
+  return (
+    LANDING_PRIORITY_BY_ROLE[String(role ?? '').toLowerCase()] ?? [
+      '/dashboard',
+      '/security',
+      '/settings',
+      '/sessions',
+      '/audit',
+      '/permission-reviews',
+    ]
+  );
 }
 
 function safeDecodeCookie(value: string | null | undefined): string {
@@ -144,10 +178,7 @@ export function resolveRoleFallbackLanding(role: RoleLike): string {
   return getLandingOrder(role)[0] ?? DEFAULT_AUTHENTICATED_LANDING_PATH;
 }
 
-export function resolveContextualLandingPath(
-  role: RoleLike,
-  abilities: PermissionEntry[],
-): string {
+export function resolveContextualLandingPath(role: RoleLike, abilities: PermissionEntry[]): string {
   const authorizedPaths = new Set(getAuthorizedProtectedPaths(abilities));
 
   for (const path of getLandingOrder(role)) {
@@ -159,10 +190,7 @@ export function resolveContextualLandingPath(
   return DEFAULT_AUTHENTICATED_LANDING_PATH;
 }
 
-export function persistAuthRoutingSnapshot(
-  user: { role: string },
-  abilities: PermissionEntry[],
-) {
+export function persistAuthRoutingSnapshot(user: { role: string }, abilities: PermissionEntry[]) {
   const landingPath = resolveContextualLandingPath(user.role, abilities);
   const authorizedPaths = getAuthorizedProtectedPaths(abilities);
 
@@ -193,7 +221,10 @@ function getProtectedRoutePolicy(pathname: string): ProtectedRoutePolicy | null 
   );
 }
 
-export function isAuthorizedProtectedRoute(pathname: string, authorizedRoutes: Set<string>): boolean {
+export function isAuthorizedProtectedRoute(
+  pathname: string,
+  authorizedRoutes: Set<string>,
+): boolean {
   const policy = getProtectedRoutePolicy(pathname);
   if (!policy) {
     return true;

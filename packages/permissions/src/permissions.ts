@@ -62,7 +62,7 @@ const PROFESIONAL_PERMISSIONS: PermissionEntry[] = PROFESIONAL_MODULES.flatMap((
   })),
 );
 
-const ASISTANTE_MODULES: Module[] = [
+const RECEPCIONISTA_MODULES: Module[] = [
   Module.DASHBOARD,
   Module.PATIENTS,
   Module.TURNS,
@@ -73,7 +73,7 @@ const ASISTANTE_MODULES: Module[] = [
   Module.PATIENT_ACCOUNTING,
 ];
 
-const ASISTANTE_ACTIONS: Action[] = [
+const RECEPCIONISTA_ACTIONS: Action[] = [
   Action.VIEW_MODULE,
   Action.VIEW_LIST,
   Action.VIEW_DETAIL,
@@ -82,43 +82,35 @@ const ASISTANTE_ACTIONS: Action[] = [
   Action.CHANGE_STATUS,
 ];
 
-const ASISTANTE_PERMISSIONS: PermissionEntry[] = ASISTANTE_MODULES.flatMap((module) =>
-  ASISTANTE_ACTIONS.map((action) => ({
-    module,
+const RECEPCIONISTA_VIEW_ONLY_PROFESSIONALS_ACTIONS: Action[] = [
+  Action.VIEW_MODULE,
+  Action.VIEW_LIST,
+  Action.VIEW_DETAIL,
+];
+
+const RECEPCIONISTA_PERMISSIONS: PermissionEntry[] = [
+  ...RECEPCIONISTA_MODULES.flatMap((module) =>
+    RECEPCIONISTA_ACTIONS.map((action) => ({
+      module,
+      action,
+      scope: Scope.OPERATIONAL_INSTITUTIONAL,
+    })),
+  ),
+  ...RECEPCIONISTA_VIEW_ONLY_PROFESSIONALS_ACTIONS.map((action) => ({
+    module: Module.PROFESSIONALS,
     action,
     scope: Scope.OPERATIONAL_INSTITUTIONAL,
   })),
-);
-
-const SUPERVISOR_MODULES: Module[] = [
-  Module.DASHBOARD,
-  Module.PATIENTS,
-  Module.TURNS,
-  Module.CLINICAL_HISTORY,
-  Module.ODONTOGRAM,
-  Module.PRESCRIPTIONS,
-  Module.PATIENT_ACCOUNTING,
 ];
-
-const SUPERVISOR_PERMISSIONS: PermissionEntry[] = SUPERVISOR_MODULES.flatMap((module) =>
-  [Action.VIEW_MODULE, Action.VIEW_LIST, Action.VIEW_DETAIL, Action.VIEW_SENSITIVE].map(
-    (action) => ({
-      module,
-      action,
-      scope: Scope.SUPERVISION,
-    }),
-  ),
-);
 
 /**
  * Default permissions map per role.
  * Used as fallback when no custom permissions are set.
  */
 export const DEFAULT_ROLE_PERMISSIONS: Record<BaseRole, PermissionEntry[]> = {
-  [BaseRole.ADMIN]: ADMIN_PERMISSIONS,
+  [BaseRole.SUPERADMIN]: ADMIN_PERMISSIONS,
   [BaseRole.PROFESIONAL]: PROFESIONAL_PERMISSIONS,
-  [BaseRole.ASISTENTE]: ASISTANTE_PERMISSIONS,
-  [BaseRole.PROFESIONAL_SUPERVISOR]: SUPERVISOR_PERMISSIONS,
+  [BaseRole.RECEPCIONISTA]: RECEPCIONISTA_PERMISSIONS,
 };
 
 /**

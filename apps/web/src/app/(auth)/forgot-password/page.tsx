@@ -2,7 +2,18 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Input, Label } from '@sistema-odontologico/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+  hoverTransition,
+} from '@sistema-odontologico/ui';
 import { requestRecovery } from '@/lib/auth/api';
 
 export default function ForgotPasswordPage() {
@@ -30,8 +41,8 @@ export default function ForgotPasswordPage() {
         <CardHeader>
           <CardTitle>Email enviado</CardTitle>
           <CardDescription>
-            Si existe una cuenta asociada a ese email, vas a recibir un enlace
-            para restablecer tu contraseña.
+            Si existe una cuenta asociada a ese email, vas a recibir un enlace para restablecer tu
+            contraseña.
           </CardDescription>
         </CardHeader>
         <CardFooter>
@@ -73,7 +84,7 @@ export default function ForgotPasswordPage() {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Enviando...' : 'Enviar enlace de recuperación'}
           </Button>
-          <Link href="/login" className="text-sm text-primary hover:underline">
+          <Link href="/login" className={`text-sm text-primary hover:underline ${hoverTransition}`}>
             Volver al inicio de sesión
           </Link>
         </CardFooter>

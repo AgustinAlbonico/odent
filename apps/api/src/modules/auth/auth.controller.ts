@@ -15,12 +15,14 @@ import { defaultCookieConfig, toCookieMaxAgeMs } from '@sistema-odontologico/aut
 import { Public } from '../../common/decorators/index.js';
 import type { AuthenticatedRequest, HttpResponse } from '../../common/http/http.types.js';
 import { TenantService } from '../tenancy/tenancy.service.js';
+import { PermissionsService } from '../permissions/permissions.service.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tenantService: TenantService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   @Post('login')
@@ -107,7 +109,10 @@ export class AuthController {
     const userAgent = req.get('user-agent') ?? 'unknown';
 
     const sid = (req as any).user?.sid ?? 'unknown';
-    await this.authService.logout(sid, userId, ipAddress, userAgent);
+    const user = (req as any).user;
+    const tenantId = user?.tid;
+    if (!tenantId) throw new UnauthorizedException();
+    await this.authService.logout(sid, userId, ipAddress, userAgent, tenantId);
 
     // Clear cookies
     res.clearCookie(defaultCookieConfig.accessTokenName);
@@ -145,7 +150,39 @@ export class AuthController {
       maxAge: toCookieMaxAgeMs(defaultCookieConfig.refreshMaxAge),
     });
 
-    return { message: 'Token refreshed' };
+    // Resolve user abilities for the response
+    const abilities = await this.permissionsService.resolvePermissions(
+      result.user.id,
+      result.user.role,
+    );
+
+    // Determine landing path based on role
+    const landingPath = this.getLandingPath(result.user.role);
+
+    return {
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tenantId: result.user.tenantId,
+        mustChangePassword: result.user.mustChangePassword ?? false,
+      },
+      abilities,
+      landingPath,
+    };
+  }
+
+  private getLandingPath(role: string): string {
+    switch (role) {
+      case 'superadmin':
+        return '/settings';
+      case 'profesional':
+        return '/dashboard';
+      case 'recepcionista':
+        return '/dashboard';
+      default:
+        return '/dashboard';
+    }
   }
 
   private getErrorMessage(reason?: string): string {

@@ -6,17 +6,6 @@ import { RequirePermission } from '../../common/decorators/index.js';
 import { Action, Module } from '@sistema-odontologico/permissions';
 import type { AuthenticatedRequest, HttpResponse } from '../../common/http/http.types.js';
 
-function belongsToAuthorizedTenantUniverse(event: { metadata: string | null }, tenantId: string): boolean {
-  if (!event.metadata) return false;
-
-  try {
-    const metadata = JSON.parse(event.metadata) as { tenantId?: string };
-    return metadata.tenantId === tenantId;
-  } catch {
-    return false;
-  }
-}
-
 @Controller('admin/audit')
 export class AuditController {
   constructor(private readonly dbService: DatabaseService) {}
@@ -34,17 +23,18 @@ export class AuditController {
   ) {
     const user = (req as any).user;
     if (!user) throw new UnauthorizedException();
+    if (!user.tid) throw new UnauthorizedException();
 
     const p = Number(page ?? '1');
     const ps = Math.min(Number(pageSize ?? '50'), 100);
 
-    const conditions = [];
+    const conditions = [eq(auditEvents.tenantId, user.tid)];
     if (eventType) conditions.push(eq(auditEvents.eventType, eventType as any));
     if (actorId) conditions.push(eq(auditEvents.actorId, actorId));
     if (from) conditions.push(gte(auditEvents.createdAt, new Date(from)));
     if (to) conditions.push(lte(auditEvents.createdAt, new Date(to)));
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(...conditions);
 
     const events = await this.dbService.db
       .select()
@@ -71,6 +61,7 @@ export class AuditController {
   ) {
     const user = (req as any).user;
     if (!user) throw new UnauthorizedException();
+    if (!user.tid) throw new UnauthorizedException();
 
     const p = Number(page ?? '1');
     const ps = Math.min(Number(pageSize ?? '50'), 100);
@@ -78,7 +69,7 @@ export class AuditController {
     const events = await this.dbService.db
       .select()
       .from(auditEvents)
-      .where(eq(auditEvents.actorId, user.sub))
+      .where(and(eq(auditEvents.actorId, user.sub), eq(auditEvents.tenantId, user.tid)))
       .orderBy(desc(auditEvents.createdAt))
       .limit(ps)
       .offset((p - 1) * ps);
@@ -105,12 +96,12 @@ export class AuditController {
     if (!user) throw new UnauthorizedException();
     if (!user.tid) throw new UnauthorizedException();
 
-    const conditions = [];
+    const conditions = [eq(auditEvents.tenantId, user.tid)];
     if (eventType) conditions.push(eq(auditEvents.eventType, eventType as any));
     if (from) conditions.push(gte(auditEvents.createdAt, new Date(from)));
     if (to) conditions.push(lte(auditEvents.createdAt, new Date(to)));
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(...conditions);
 
     const events = await this.dbService.db
       .select()
@@ -119,13 +110,9 @@ export class AuditController {
       .orderBy(desc(auditEvents.createdAt))
       .limit(10000); // Max 10k records per export
 
-    const authorizedEvents = events.filter((event) =>
-      belongsToAuthorizedTenantUniverse(event, user.tid),
-    );
-
     // Generate CSV
     const headers = ['id', 'event_type', 'actor_email', 'ip_address', 'timestamp', 'metadata'];
-    const rows = authorizedEvents.map((e) =>
+    const rows = events.map((e) =>
       [
         e.id,
         e.eventType,

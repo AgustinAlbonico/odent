@@ -36,7 +36,7 @@ describe('auth routing policy', () => {
       permission(Module.SYSTEM_CONFIG, Action.CLOSE_SESSION_ADMIN),
     ];
 
-    expect(resolveContextualLandingPath(BaseRole.ADMIN, abilities)).toBe('/sessions');
+    expect(resolveContextualLandingPath(BaseRole.SUPERADMIN, abilities)).toBe('/sessions');
   });
 
   it('falls back to security when no landing-specific permission is available', () => {

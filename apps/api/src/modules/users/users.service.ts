@@ -12,12 +12,7 @@ import { DEFAULT_ROLE_PERMISSIONS, type BaseRole } from '@sistema-odontologico/p
 import type { TenantContext } from '@sistema-odontologico/tenancy-core';
 import { DatabaseService } from '../../infra/database/database.service.js';
 import { PlanGovernanceService } from '../plan-governance/plan-governance.service.js';
-import {
-  users,
-  userPermissions,
-  auditEvents,
-  tenants,
-} from '../../infra/database/schema.js';
+import { users, userPermissions, auditEvents, tenants } from '../../infra/database/schema.js';
 import type {
   CreateUserInput,
   UpdateUserInput,
@@ -65,7 +60,7 @@ export interface PaginatedUsersResult {
 
 type AccountState = 'active' | 'inactive' | 'locked' | 'pending_password_change';
 
-const PROFESSIONAL_ROLES = new Set(['profesional', 'profesional_supervisor']);
+const PROFESSIONAL_ROLES = new Set(['profesional']);
 const ACTIVE_STATES = new Set<AccountState>(['active']);
 
 @Injectable()
@@ -77,28 +72,22 @@ export class UsersService {
 
   // ─── List Users ──────────────────────────────────────
 
-  async listUsers(
-    filters: ListUsersQueryInput,
-  ): Promise<PaginatedUsersResult> {
+  async listUsers(filters: ListUsersQueryInput, tenantId: string): Promise<PaginatedUsersResult> {
     const { role, state, search, page, limit } = filters;
     const offset = (page - 1) * limit;
 
-    // Build conditions
-    const conditions = [];
+    // Build conditions — always include tenant filter
+    const conditions = [eq(users.tenantId, tenantId)];
     if (role) conditions.push(eq(users.role, role));
     if (state) conditions.push(eq(users.state, state));
     if (search) {
       const term = `%${search}%`;
       conditions.push(
-        or(
-          ilike(users.firstName, term),
-          ilike(users.lastName, term),
-          ilike(users.email, term),
-        )!,
+        or(ilike(users.firstName, term), ilike(users.lastName, term), ilike(users.email, term))!,
       );
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     // Count query
     const countResult = await this.dbService.db
@@ -128,11 +117,11 @@ export class UsersService {
 
   // ─── Get User By ID ──────────────────────────────────
 
-  async getUserById(userId: string): Promise<UserDetail> {
+  async getUserById(userId: string, tenantId: string): Promise<UserDetail> {
     const [user] = await this.dbService.db
       .select()
       .from(users)
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), eq(users.tenantId, tenantId)))
       .limit(1);
 
     if (!user) {
@@ -200,6 +189,7 @@ export class UsersService {
     const [created] = await this.dbService.db
       .insert(users)
       .values({
+        tenantId,
         email: normalizedEmail,
         passwordHash,
         firstName: input.firstName.trim(),
@@ -228,9 +218,10 @@ export class UsersService {
       ipAddress,
       userAgent,
       { action: 'user_created', userId: created.id, role: input.role },
+      tenantId,
     );
 
-    return this.getUserById(created.id);
+    return this.getUserById(created.id, tenantId);
   }
 
   // ─── Update User ─────────────────────────────────────
@@ -252,7 +243,7 @@ export class UsersService {
     }
 
     // Fetch current user
-    const currentUser = await this.findUserOrThrow(userId);
+    const currentUser = await this.findUserOrThrow(userId, tenantId);
 
     // Determine quota implications
     const newRole = input.role ?? currentUser.role;
@@ -266,7 +257,12 @@ export class UsersService {
     }
 
     // State changing to active for a profesional — check quota
-    if (newRole === 'profesional' && newState === 'active' && oldState !== 'active' && oldRole === 'profesional') {
+    if (
+      newRole === 'profesional' &&
+      newState === 'active' &&
+      oldState !== 'active' &&
+      oldRole === 'profesional'
+    ) {
       await this.checkProfessionalQuota(tenantId);
     }
 
@@ -276,12 +272,10 @@ export class UsersService {
     if (input.lastName !== undefined) updateData['lastName'] = input.lastName.trim();
     if (input.role !== undefined) updateData['role'] = input.role;
     if (input.state !== undefined) updateData['state'] = input.state;
-    if (input.mustChangePassword !== undefined) updateData['mustChangePassword'] = input.mustChangePassword;
+    if (input.mustChangePassword !== undefined)
+      updateData['mustChangePassword'] = input.mustChangePassword;
 
-    await this.dbService.db
-      .update(users)
-      .set(updateData)
-      .where(eq(users.id, userId));
+    await this.dbService.db.update(users).set(updateData).where(eq(users.id, userId));
 
     // Adjust professional count
     await this.adjustProfessionalCount(tenantId, oldRole, oldState, newRole, newState);
@@ -298,9 +292,10 @@ export class UsersService {
         userId,
         changes: Object.keys(updateData).filter((k) => k !== 'updatedAt'),
       },
+      tenantId,
     );
 
-    return this.getUserById(userId);
+    return this.getUserById(userId, tenantId);
   }
 
   // ─── Change State ────────────────────────────────────
@@ -321,7 +316,7 @@ export class UsersService {
       });
     }
 
-    const currentUser = await this.findUserOrThrow(userId);
+    const currentUser = await this.findUserOrThrow(userId, tenantId);
     const oldState = currentUser.state;
 
     if (oldState === newState) {
@@ -363,9 +358,10 @@ export class UsersService {
         oldState,
         newState,
       },
+      tenantId,
     );
 
-    return this.getUserById(userId);
+    return this.getUserById(userId, tenantId);
   }
 
   // ─── Force Password Change ───────────────────────────
@@ -375,8 +371,9 @@ export class UsersService {
     actor: { sub: string; email: string },
     ipAddress: string,
     userAgent: string,
+    tenantId: string,
   ): Promise<{ success: boolean }> {
-    await this.findUserOrThrow(userId);
+    await this.findUserOrThrow(userId, tenantId);
 
     await this.dbService.db
       .update(users)
@@ -395,6 +392,7 @@ export class UsersService {
       ipAddress,
       userAgent,
       { action: 'force_password_change', userId },
+      tenantId,
     );
 
     return { success: true };
@@ -402,11 +400,17 @@ export class UsersService {
 
   // ─── Get User Permissions ────────────────────────────
 
-  async getUserPermissions(userId: string): Promise<{
+  async getUserPermissions(
+    userId: string,
+    tenantId: string,
+  ): Promise<{
     custom: UserPermissionItem[];
-    inherited: { role: string; permissions: Array<{ module: string; action: string; scope: string }> };
+    inherited: {
+      role: string;
+      permissions: Array<{ module: string; action: string; scope: string }>;
+    };
   }> {
-    const user = await this.findUserOrThrow(userId);
+    const user = await this.findUserOrThrow(userId, tenantId);
 
     const customPerms = await this.dbService.db
       .select()
@@ -441,13 +445,12 @@ export class UsersService {
     actor: { sub: string; email: string },
     ipAddress: string,
     userAgent: string,
+    tenantId: string,
   ): Promise<UserPermissionItem[]> {
-    await this.findUserOrThrow(userId);
+    await this.findUserOrThrow(userId, tenantId);
 
     // Delete existing custom permissions
-    await this.dbService.db
-      .delete(userPermissions)
-      .where(eq(userPermissions.userId, userId));
+    await this.dbService.db.delete(userPermissions).where(eq(userPermissions.userId, userId));
 
     // Insert new permissions
     const inserted: UserPermissionItem[] = [];
@@ -460,10 +463,7 @@ export class UsersService {
         scope: p.scope.toLowerCase() as PermissionInsert['scope'],
       }));
 
-      const rows = await this.dbService.db
-        .insert(userPermissions)
-        .values(values)
-        .returning();
+      const rows = await this.dbService.db.insert(userPermissions).values(values).returning();
 
       for (const row of rows) {
         inserted.push({
@@ -487,6 +487,7 @@ export class UsersService {
         userId,
         permissionCount: permissions.length,
       },
+      tenantId,
     );
 
     return inserted;
@@ -500,7 +501,11 @@ export class UsersService {
     actor: { sub: string; email: string },
     ipAddress: string,
     userAgent: string,
+    tenantId: string,
   ): Promise<{ success: boolean }> {
+    // Verify user belongs to tenant
+    await this.findUserOrThrow(userId, tenantId);
+
     // Verify permission belongs to user
     const [perm] = await this.dbService.db
       .select()
@@ -515,9 +520,7 @@ export class UsersService {
       });
     }
 
-    await this.dbService.db
-      .delete(userPermissions)
-      .where(eq(userPermissions.id, permissionId));
+    await this.dbService.db.delete(userPermissions).where(eq(userPermissions.id, permissionId));
 
     // Audit log
     await this.recordAudit(
@@ -532,6 +535,7 @@ export class UsersService {
         permissionId,
         permission: { module: perm.module, action: perm.action, scope: perm.scope },
       },
+      tenantId,
     );
 
     return { success: true };
@@ -539,12 +543,12 @@ export class UsersService {
 
   // ─── Private Helpers ─────────────────────────────────
 
-  private async findUserOrThrow(userId: string) {
-    const [user] = await this.dbService.db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+  private async findUserOrThrow(userId: string, tenantId?: string) {
+    const tenantCondition = tenantId
+      ? and(eq(users.id, userId), eq(users.tenantId, tenantId))
+      : eq(users.id, userId);
+
+    const [user] = await this.dbService.db.select().from(users).where(tenantCondition).limit(1);
 
     if (!user) {
       throw new NotFoundException({
@@ -586,8 +590,7 @@ export class UsersService {
       const messages: Record<string, string> = {
         quota_exhausted:
           'Cuota de profesionales activos alcanzada. Actualice el plan para agregar más.',
-        grace_active:
-          'Período de gracia activo — no se pueden agregar profesionales.',
+        grace_active: 'Período de gracia activo — no se pueden agregar profesionales.',
         grace_expired_over_quota:
           'Período de gracia vencido con exceso de profesionales. Regularice el plan.',
       };
@@ -612,8 +615,10 @@ export class UsersService {
     newRole: string,
     newState: string,
   ): Promise<void> {
-    const oldCounted = oldRole === 'profesional' && ACTIVE_STATES.has(oldState as AccountState) ? 1 : 0;
-    const newCounted = newRole === 'profesional' && ACTIVE_STATES.has(newState as AccountState) ? 1 : 0;
+    const oldCounted =
+      oldRole === 'profesional' && ACTIVE_STATES.has(oldState as AccountState) ? 1 : 0;
+    const newCounted =
+      newRole === 'profesional' && ACTIVE_STATES.has(newState as AccountState) ? 1 : 0;
     const delta = newCounted - oldCounted;
 
     if (delta === 0) return;
@@ -649,8 +654,10 @@ export class UsersService {
     ipAddress: string,
     userAgent: string,
     metadata: Record<string, unknown>,
+    tenantId: string,
   ): Promise<void> {
     await this.dbService.db.insert(auditEvents).values({
+      tenantId,
       eventType,
       actorId,
       actorEmail,

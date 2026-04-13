@@ -73,7 +73,7 @@
 **Files:**
 - Modify: `apps/api/test/**`
 - Modify: `apps/web/tests/e2e/auth-access.spec.ts`
-- Modify: `docs/auth-tenancy-traceability.md`
+- Modify: `docs/implementation/auth-tenancy-traceability.md`
 - Test: `pnpm test`, `pnpm build`, `pnpm typecheck`
 
 - [x] Reejecutar suites corregidas y cerrar los errores de carga restantes.

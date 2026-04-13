@@ -42,7 +42,7 @@ vi.mock('@/hooks/use-auth', () => ({
 
 describe('login redirect contract', () => {
   beforeEach(() => {
-    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+    (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.push.mockReset();
     mocks.refresh.mockReset();
     mocks.login.mockReset();

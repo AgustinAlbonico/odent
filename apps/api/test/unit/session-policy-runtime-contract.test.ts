@@ -65,7 +65,9 @@ describe('Session policy runtime contracts', () => {
 
     const service = new SessionPolicyService(dbService as never);
 
-    await expect(service.getPolicy('admin-user')).resolves.toEqual(DEFAULT_SESSION_POLICY);
+    await expect(service.getPolicy('admin-user', 'tenant-1')).resolves.toEqual(
+      DEFAULT_SESSION_POLICY,
+    );
   });
 
   it('persists the canonical policy payload and records an audit event on update', async () => {
@@ -122,6 +124,7 @@ describe('Session policy runtime contracts', () => {
           ipAddress: '127.0.0.1',
           userAgent: 'Vitest',
         },
+        'tenant-1',
       ),
     ).resolves.toEqual({
       inactivityTimeoutMinutes: 45,

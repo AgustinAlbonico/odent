@@ -87,6 +87,7 @@ export class SessionAdminController {
         .limit(1);
 
       await this.dbService.db.insert(auditEvents).values({
+        tenantId: adminUser.tid,
         eventType: AuditEventType.SESSION_CLOSED_BY_ADMIN,
         actorId: adminUser.sub,
         actorEmail: adminUser.email,

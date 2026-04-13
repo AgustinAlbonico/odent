@@ -367,7 +367,7 @@ Los componentes que representan bloques complejos (Card, Dialog, Table) se estru
 | Estado | Implementación | Uso |
 |--------|----------------|-----|
 | **Default** | Estilo base del componente | Estado de reposo |
-| **Hover** | Cambio sutil de fondo/borde + `cursor-pointer` | Mouse sobre elemento interactivo |
+| **Hover** | Cambio sutil de fondo/borde con transición explícita + `cursor-pointer` en controles custom | Mouse sobre elemento interactivo |
 | **Focus** | `ring-2 ring-ring ring-offset-2` | Elemento tiene foco del teclado |
 | **Focus visible** | Mismo ring, solo con teclado (`focus-visible`) | No mostrar ring en clicks de mouse |
 | **Active** | Opacidad reducida (0.8) o fondo más oscuro | Momento del click/press |
@@ -379,11 +379,12 @@ Los componentes que representan bloques complejos (Card, Dialog, Table) se estru
 
 | Elemento | Duración | Easing | Qué se anima |
 |----------|----------|--------|-------------|
-| Botones, links | 150ms | ease | background-color, color |
+| Botones, links, tabs, icon buttons | 150ms | ease-out | background-color, border-color, color |
 | Hover de cards | 200ms | ease | box-shadow, transform (translateY -1px) |
+| Thumbnails / media affordances | 150ms | ease-out | opacity, box-shadow, transform |
 | Sidebar expand/collapse | 200ms | ease | width |
 | Modales/dialogs | 200ms | ease-out | opacity + scale (0.95 → 1) |
-| Tooltips | 150ms | ease | opacity |
+| Tooltips | 150ms | ease-out | opacity |
 | Dropdowns | 150ms | ease-out | opacity + scale (0.95 → 1) |
 | Page transitions | 200ms | ease | opacity |
 
@@ -399,6 +400,8 @@ Utility helper en `lib/utils.ts`:
 
 ```typescript
 export const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+export const hoverTransition = "transition-colors duration-150 ease-out";
+export const interactiveTransition = "transition-[opacity,box-shadow,transform] duration-150 ease-out";
 ```
 
 ### 7.4 Animaciones de entrada/salida
@@ -416,12 +419,16 @@ Definidas como `@keyframes` dentro de `@theme`:
 ### 7.5 Reglas de interacciones
 
 1. `focus-visible` SIEMPRE — nunca `focus` puro (evita ring en clicks).
-2. Transiciones menores a 300ms siempre — nada lento en un sistema de uso diario.
-3. No animar propiedades que disparan layout (`width`, `height`, `top`, `left`) — solo `transform`, `opacity`, `box-shadow`, `background-color`.
-4. Respetar `prefers-reduced-motion` — deshabilitar animaciones no esenciales para usuarios que lo tienen activado.
-5. Hover de cards: solo `shadow-sm` + `translateY(-1px)` — sutil, no teatral.
-6. Estados de loading SIEMPRE bloquean interacción (`pointer-events-none`).
-7. Botones SIEMPRE tienen `cursor-pointer` en estado default y hover.
+2. Todo elemento interactivo con `hover:*` lleva una transición explícita — nunca cambios bruscos.
+3. El estándar por defecto es `150ms ease-out` — rápido, sobrio y consistente con un producto clínico.
+4. Para cambios simples de color/fondo/borde usar `transition-colors duration-150 ease-out`.
+5. Para affordances de media / preview usar `transition-[opacity,box-shadow,transform] duration-150 ease-out`.
+6. No animar propiedades que disparan layout (`width`, `height`, `top`, `left`) — solo `transform`, `opacity`, `box-shadow`, `background-color`, `border-color`, `color`.
+7. Los controles clickeables custom (icon buttons, overlays, thumbnails, filas seleccionables) exponen `cursor-pointer` de forma explícita.
+8. Hover de cards: solo `shadow-sm` + `translateY(-1px)` — sutil, no teatral.
+9. Estados de loading SIEMPRE bloquean interacción (`pointer-events-none`).
+10. Botones SIEMPRE tienen `cursor-pointer` en estado default y hover.
+11. Respetar `prefers-reduced-motion` — deshabilitar animaciones no esenciales para usuarios que lo tienen activado.
 
 ---
 
@@ -445,6 +452,7 @@ Definidas como `@keyframes` dentro de `@theme`:
 2. Stroke width consistente: 1.5px (default de Lucide).
 3. Color de ícono hereda del `currentColor` del contenedor — nunca hardcodear color en íconos.
 4. Íconos en nav items: 20px, con label de texto al lado.
+5. Affordances de preview / enlarge usan íconos neutrales de acción (`ZoomIn`, `Expand`) — nunca íconos de dominio clínico para indicar interacción genérica.
 
 ---
 

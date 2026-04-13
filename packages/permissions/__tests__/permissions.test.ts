@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  Module,
   Action,
-  Scope,
   BaseRole,
   DEFAULT_ROLE_PERMISSIONS,
+  Module,
   type PermissionEntry,
-} from '../src/index.js';
+  Scope,
+} from '../src/index.ts';
 
 // ─── Enum cardinality (§18.1 design / §12.2 PRD) ─────────────────────────
 
@@ -26,9 +26,9 @@ describe('Enum values', () => {
     expect(scopeValues).toHaveLength(6);
   });
 
-  it('BaseRole enum has exactly 4 values', () => {
+  it('BaseRole enum has exactly 3 values', () => {
     const roleValues = Object.values(BaseRole);
-    expect(roleValues).toHaveLength(4);
+    expect(roleValues).toHaveLength(3);
   });
 });
 
@@ -37,47 +37,46 @@ describe('Enum values', () => {
 describe('DEFAULT_ROLE_PERMISSIONS', () => {
   it('has entries for all 4 base roles', () => {
     expect(Object.keys(DEFAULT_ROLE_PERMISSIONS)).toHaveLength(4);
-    expect(DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN]).toBeDefined();
+    expect(DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN]).toBeDefined();
     expect(DEFAULT_ROLE_PERMISSIONS[BaseRole.PROFESIONAL]).toBeDefined();
-    expect(DEFAULT_ROLE_PERMISSIONS[BaseRole.ASISTENTE]).toBeDefined();
-    expect(DEFAULT_ROLE_PERMISSIONS[BaseRole.PROFESIONAL_SUPERVISOR]).toBeDefined();
+    expect(DEFAULT_ROLE_PERMISSIONS[BaseRole.RECEPCIONISTA]).toBeDefined();
   });
 
-  describe('Admin role', () => {
+  describe('Superadmin role', () => {
     it('gets permissions for ALL modules', () => {
-      const adminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN];
-      const modulesWithPerm = new Set(adminPerms.map((p) => p.module));
+      const superadminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN];
+      const modulesWithPerm = new Set(superadminPerms.map((p) => p.module));
       for (const mod of Object.values(Module)) {
-        expect(modulesWithPerm.has(mod), `Admin should have module: ${mod}`).toBe(true);
+        expect(modulesWithPerm.has(mod), `Superadmin should have module: ${mod}`).toBe(true);
       }
     });
 
     it('gets ALL actions for every module', () => {
-      const adminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN];
+      const superadminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN];
       const actionsPerModule = new Map<Module, Set<Action>>();
-      for (const p of adminPerms) {
+      for (const p of superadminPerms) {
         if (!actionsPerModule.has(p.module)) actionsPerModule.set(p.module, new Set());
-        actionsPerModule.get(p.module)!.add(p.action);
+        actionsPerModule.get(p.module)?.add(p.action);
       }
       for (const mod of Object.values(Module)) {
         const actions = actionsPerModule.get(mod);
-        expect(actions, `Admin should have actions for module: ${mod}`).toBeDefined();
+        expect(actions, `Superadmin should have actions for module: ${mod}`).toBeDefined();
         for (const act of Object.values(Action)) {
-          expect(actions!.has(act), `Admin should have ${act} on ${mod}`).toBe(true);
+          expect(actions?.has(act), `Superadmin should have ${act} on ${mod}`).toBe(true);
         }
       }
     });
 
     it('gets INSTITUTIONAL_TOTAL scope on every permission', () => {
-      const adminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN];
-      for (const p of adminPerms) {
+      const superadminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN];
+      for (const p of superadminPerms) {
         expect(p.scope).toBe(Scope.INSTITUTIONAL_TOTAL);
       }
     });
 
     it('has 17 modules × 15 actions = 255 permissions', () => {
-      const adminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN];
-      expect(adminPerms).toHaveLength(17 * 15);
+      const superadminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN];
+      expect(superadminPerms).toHaveLength(17 * 15);
     });
   });
 
@@ -140,11 +139,11 @@ describe('DEFAULT_ROLE_PERMISSIONS', () => {
     });
   });
 
-  describe('Asistente role', () => {
-    const perms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ASISTENTE];
+  describe('Recepcionista role', () => {
+    const perms = DEFAULT_ROLE_PERMISSIONS[BaseRole.RECEPCIONISTA];
     const modulesSet = new Set(perms.map((p) => p.module));
 
-    it('gets operational modules (8 modules)', () => {
+    it('gets operational modules plus professionals view access', () => {
       const expectedModules: Module[] = [
         Module.DASHBOARD,
         Module.PATIENTS,
@@ -154,9 +153,10 @@ describe('DEFAULT_ROLE_PERMISSIONS', () => {
         Module.MUTUALS,
         Module.DEPOSITS,
         Module.PATIENT_ACCOUNTING,
+        Module.PROFESSIONALS,
       ];
       for (const mod of expectedModules) {
-        expect(modulesSet.has(mod), `Asistente should have ${mod}`).toBe(true);
+        expect(modulesSet.has(mod), `Recepcionista should have ${mod}`).toBe(true);
       }
     });
 
@@ -171,8 +171,19 @@ describe('DEFAULT_ROLE_PERMISSIONS', () => {
         Module.GENERAL_ACCOUNTING,
       ];
       for (const mod of excludedModules) {
-        expect(modulesSet.has(mod), `Asistente should NOT have ${mod}`).toBe(false);
+        expect(modulesSet.has(mod), `Recepcionista should NOT have ${mod}`).toBe(false);
       }
+    });
+
+    it('gets professionals as view-only module', () => {
+      const professionalPerms = perms.filter((p) => p.module === Module.PROFESSIONALS);
+
+      expect(professionalPerms).toHaveLength(3);
+      expect(professionalPerms.map((p) => p.action).sort()).toEqual([
+        Action.VIEW_DETAIL,
+        Action.VIEW_LIST,
+        Action.VIEW_MODULE,
+      ]);
     });
 
     it('has OPERATIONAL_INSTITUTIONAL scope on all permissions', () => {
@@ -181,37 +192,6 @@ describe('DEFAULT_ROLE_PERMISSIONS', () => {
           Scope.OPERATIONAL_INSTITUTIONAL,
         );
       }
-    });
-  });
-
-  describe('Profesional Supervisor role', () => {
-    const perms = DEFAULT_ROLE_PERMISSIONS[BaseRole.PROFESIONAL_SUPERVISOR];
-    const modulesSet = new Set(perms.map((p) => p.module));
-
-    it('gets clinical + supervision modules (7 modules)', () => {
-      const expectedModules: Module[] = [
-        Module.DASHBOARD,
-        Module.PATIENTS,
-        Module.TURNS,
-        Module.CLINICAL_HISTORY,
-        Module.ODONTOGRAM,
-        Module.PRESCRIPTIONS,
-        Module.PATIENT_ACCOUNTING,
-      ];
-      for (const mod of expectedModules) {
-        expect(modulesSet.has(mod), `Supervisor should have ${mod}`).toBe(true);
-      }
-    });
-
-    it('has SUPERVISION scope on all permissions', () => {
-      for (const p of perms) {
-        expect(p.scope, `${p.action} on ${p.module} should be SUPERVISION`).toBe(Scope.SUPERVISION);
-      }
-    });
-
-    it('has VIEW_SENSITIVE action (different from Profesional)', () => {
-      const sensitivePerms = perms.filter((p) => p.action === Action.VIEW_SENSITIVE);
-      expect(sensitivePerms.length).toBeGreaterThan(0);
     });
   });
 });

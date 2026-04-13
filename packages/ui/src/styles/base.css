@@ -9,3 +9,20 @@
     font-family: var(--font-sans);
   }
 }
+
+/* ---- TabsTrigger active state ---- */
+/* Tailwind v4 data-[state=active]: variants don't get generated when component
+   source lives outside the app's content scan path. These rules ensure the active
+   tab is always visible regardless of build configuration. */
+@layer components {
+  [data-state="active"].tabs-trigger {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    box-shadow: var(--shadow-sm);
+  }
+
+  :is(.dark, .dark *) [data-state="active"].tabs-trigger {
+    background-color: oklch(33% 0.015 260);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  }
+}

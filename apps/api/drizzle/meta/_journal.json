@@ -5,8 +5,29 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1774976121199,
-      "tag": "0000_gorgeous_bloodaxe",
+      "when": 1775101529516,
+      "tag": "0000_curvy_agent_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775101661987,
+      "tag": "0001_orange_stellaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775744802283,
+      "tag": "0002_cultured_jack_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775759277888,
+      "tag": "0003_condemned_wiccan",
       "breakpoints": true
     }
   ]

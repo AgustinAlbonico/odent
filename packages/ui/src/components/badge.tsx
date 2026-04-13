@@ -1,9 +1,9 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentPropsWithRef } from 'react';
-import { cn } from '../lib/utils';
+import { cn, hoverTransition } from '../lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium transition-colors',
+  `inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium ${hoverTransition}`,
   {
     variants: {
       variant: {
@@ -19,20 +19,13 @@ const badgeVariants = cva(
     defaultVariants: {
       variant: 'default',
     },
-  }
+  },
 );
 
-export type BadgeProps = ComponentPropsWithRef<'span'> &
-  VariantProps<typeof badgeVariants>;
+export type BadgeProps = ComponentPropsWithRef<'span'> & VariantProps<typeof badgeVariants>;
 
 export function Badge({ className, variant, ref, ...props }: BadgeProps) {
-  return (
-    <span
-      ref={ref}
-      className={cn(badgeVariants({ variant, className }))}
-      {...props}
-    />
-  );
+  return <span ref={ref} className={cn(badgeVariants({ variant, className }))} {...props} />;
 }
 
 export { badgeVariants };

@@ -9,3 +9,30 @@ coverage/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Build artifacts
+*.tsbuildinfo
+
+# AI tool configs (not part of the project)
+.augment/
+.claude/
+.codebuddy/
+.continue/
+.junie/
+.kiro/
+.clavix/
+.ruff_cache/
+
+# Playwright MCP logs/snapshots
+.playwright-mcp/
+
+# Agent skills lock
+skills-lock.json
+
+# Snapshot files
+current-snapshot.yml
+dashboard-login-snapshot-deep.yml
+dashboard-login-snapshot.yml
+
+# Husky legacy dir (real one is .husky/)
+husky/

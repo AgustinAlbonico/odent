@@ -5,7 +5,7 @@ export const createUserSchema = z.object({
   email: z.email('Email inválido'),
   firstName: z.string().min(1, 'Nombre requerido').max(100),
   lastName: z.string().min(1, 'Apellido requerido').max(100),
-  role: z.enum(['admin', 'profesional', 'asistente', 'profesional_supervisor'], {
+  role: z.enum(['superadmin', 'profesional', 'recepcionista'], {
     message: 'Rol inválido',
   }),
   state: z.enum(['active', 'inactive', 'pending_password_change']).default('active'),
@@ -18,7 +18,7 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export const updateUserSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
-  role: z.enum(['admin', 'profesional', 'asistente', 'profesional_supervisor']).optional(),
+  role: z.enum(['superadmin', 'profesional', 'recepcionista']).optional(),
   state: z.enum(['active', 'inactive', 'locked', 'pending_password_change']).optional(),
   mustChangePassword: z.boolean().optional(),
 });
@@ -27,7 +27,7 @@ export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 // ─── List Users Query ─────────────────────────────────
 export const listUsersQuerySchema = z.object({
-  role: z.enum(['admin', 'profesional', 'asistente', 'profesional_supervisor']).optional(),
+  role: z.enum(['superadmin', 'profesional', 'recepcionista']).optional(),
   state: z.enum(['active', 'inactive', 'locked', 'pending_password_change']).optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),

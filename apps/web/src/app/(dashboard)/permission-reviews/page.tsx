@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Badge,
+  hoverTransition,
 } from '@sistema-odontologico/ui';
 import { useAuth } from '@/hooks/use-auth';
 import { useAbilities } from '@/hooks/use-abilities';
@@ -128,9 +129,7 @@ export default function PermissionReviewsPage() {
       // Could show a toast here in the future
       void result;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Error al generar revisiones',
-      );
+      setError(err instanceof Error ? err.message : 'Error al generar revisiones');
     } finally {
       setGenerating(false);
     }
@@ -191,9 +190,7 @@ export default function PermissionReviewsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Revisiones de Permisos
-          </h1>
+          <h1 className="text-2xl font-semibold text-foreground">Revisiones de Permisos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Revis&aacute; peri&oacute;dicamente los permisos asignados a los usuarios.
           </p>
@@ -299,10 +296,7 @@ export default function PermissionReviewsPage() {
                   <tbody>
                     {data?.data.length === 0 && (
                       <tr>
-                        <td
-                          colSpan={7}
-                          className="px-4 py-8 text-center text-muted-foreground"
-                        >
+                        <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                           No hay revisiones de permisos.
                         </td>
                       </tr>
@@ -314,17 +308,13 @@ export default function PermissionReviewsPage() {
                       return (
                         <tr
                           key={review.id}
-                          className="border-b border-border transition-colors hover:bg-muted/50"
+                          className="border-b border-border transition-colors duration-150 ease-out hover:bg-muted/50"
                         >
                           <td className="px-4 py-3 text-sm">
                             <div className="font-medium">{review.userName}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {review.userEmail}
-                            </div>
+                            <div className="text-xs text-muted-foreground">{review.userEmail}</div>
                           </td>
-                          <td className="px-4 py-3 text-sm font-mono">
-                            {review.module}
-                          </td>
+                          <td className="px-4 py-3 text-sm font-mono">{review.module}</td>
                           <td className="px-4 py-3 text-sm">{review.action}</td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {review.scope}
@@ -345,7 +335,7 @@ export default function PermissionReviewsPage() {
                                   size="sm"
                                   disabled={isActionLoading}
                                   onClick={() => handleConfirm(review.id)}
-                                  className="text-success hover:bg-success/10 hover:text-success"
+                                  className={`text-success hover:bg-success/10 hover:text-success ${hoverTransition}`}
                                 >
                                   {isActionLoading ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -359,18 +349,14 @@ export default function PermissionReviewsPage() {
                                   size="sm"
                                   disabled={isActionLoading}
                                   onClick={() => handleRevoke(review.id)}
-                                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  className={`text-destructive hover:bg-destructive/10 hover:text-destructive ${hoverTransition}`}
                                 >
                                   <XCircle className="h-4 w-4" />
                                   Revocar
                                 </Button>
                               </div>
                             )}
-                            {!isPending && (
-                              <span className="text-xs text-muted-foreground">
-                                —
-                              </span>
-                            )}
+                            {!isPending && <span className="text-xs text-muted-foreground">—</span>}
                           </td>
                         </tr>
                       );

@@ -5,7 +5,12 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../../infra/database/database.service.js';
 import { users, sessions, auditEvents } from '../../infra/database/schema.js';
-import type { JwtPayload, RefreshTokenPayload, SessionContext, LoginResult } from '@sistema-odontologico/auth-core';
+import type {
+  JwtPayload,
+  RefreshTokenPayload,
+  SessionContext,
+  LoginResult,
+} from '@sistema-odontologico/auth-core';
 import { SecurityService } from '../security/security.service.js';
 import { PermissionsService } from '../permissions/permissions.service.js';
 import { AuditEventType } from '@sistema-odontologico/audit-core';
@@ -57,13 +62,27 @@ export class AuthService {
       return { success: false, reason: 'invalid_credentials' };
     }
 
+    // Verify user belongs to requested tenant — reject before any lockout check
+    // to prevent cross-tenant failed attempt recording
+    if (user.tenantId !== tenantId) {
+      return { success: false, reason: 'invalid_credentials' };
+    }
+
     const lockStatus = await this.securityService.getAccountLockStatus(email);
     if (lockStatus) {
-      await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_FAILURE, ipAddress, userAgent, {
-        attemptedEmail: email,
-        reason: 'account_locked',
-        source: 'temporary_lockout',
-      });
+      await this.recordAudit(
+        user.id,
+        user.email,
+        AuditEventType.LOGIN_FAILURE,
+        ipAddress,
+        userAgent,
+        {
+          attemptedEmail: email,
+          reason: 'account_locked',
+          source: 'temporary_lockout',
+        },
+        tenantId,
+      );
 
       return { success: false, reason: 'account_locked' };
     }
@@ -73,18 +92,34 @@ export class AuthService {
     if (!passwordValid) {
       const failedAttempt = await this.securityService.recordFailedAttempt(email);
 
-      await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_FAILURE, ipAddress, userAgent, {
-        attemptedEmail: email,
-        reason: failedAttempt.locked ? 'account_locked' : 'invalid_credentials',
-        failedAttempts: failedAttempt.attempts,
-      });
+      await this.recordAudit(
+        user.id,
+        user.email,
+        AuditEventType.LOGIN_FAILURE,
+        ipAddress,
+        userAgent,
+        {
+          attemptedEmail: email,
+          reason: failedAttempt.locked ? 'account_locked' : 'invalid_credentials',
+          failedAttempts: failedAttempt.attempts,
+        },
+        tenantId,
+      );
 
       if (failedAttempt.locked) {
-        await this.recordAudit(user.id, user.email, AuditEventType.ACCOUNT_LOCKED, ipAddress, userAgent, {
-          attemptedEmail: email,
-          lockedUntil: failedAttempt.lockedUntil?.toISOString() ?? null,
-          source: 'failed_attempt_threshold',
-        });
+        await this.recordAudit(
+          user.id,
+          user.email,
+          AuditEventType.ACCOUNT_LOCKED,
+          ipAddress,
+          userAgent,
+          {
+            attemptedEmail: email,
+            lockedUntil: failedAttempt.lockedUntil?.toISOString() ?? null,
+            source: 'failed_attempt_threshold',
+          },
+          tenantId,
+        );
 
         return { success: false, reason: 'account_locked' };
       }
@@ -94,41 +129,60 @@ export class AuthService {
 
     // Check account state
     if (user.state === 'inactive') {
-      await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_FAILURE, ipAddress, userAgent, {
-        attemptedEmail: email,
-        reason: 'account_inactive',
-      });
+      await this.recordAudit(
+        user.id,
+        user.email,
+        AuditEventType.LOGIN_FAILURE,
+        ipAddress,
+        userAgent,
+        {
+          attemptedEmail: email,
+          reason: 'account_inactive',
+        },
+        tenantId,
+      );
 
       return { success: false, reason: 'account_inactive' };
     }
     if (user.state === 'locked') {
-      await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_FAILURE, ipAddress, userAgent, {
-        attemptedEmail: email,
-        reason: 'account_locked',
-        source: 'account_state',
-      });
+      await this.recordAudit(
+        user.id,
+        user.email,
+        AuditEventType.LOGIN_FAILURE,
+        ipAddress,
+        userAgent,
+        {
+          attemptedEmail: email,
+          reason: 'account_locked',
+          source: 'account_state',
+        },
+        tenantId,
+      );
 
       return { success: false, reason: 'account_locked' };
     }
 
     const now = new Date();
-    const policy = await this.sessionPolicyRuntimeService.getRuntimePolicy();
+    const policy = await this.sessionPolicyRuntimeService.getRuntimePolicy(tenantId);
 
-    await this.sessionPolicyRuntimeService.enforceConcurrentSessionLimit(user.id, policy.maxConcurrentSessions, now, {
-      userId: user.id,
-      userEmail: user.email,
-      ipAddress,
-      userAgent,
-    });
+    await this.sessionPolicyRuntimeService.enforceConcurrentSessionLimit(
+      user.id,
+      policy.maxConcurrentSessions ?? 3,
+      now,
+      {
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress,
+        userAgent,
+      },
+      tenantId,
+    );
 
     // Generate tokens
     const tokenId = uuidv4();
     const permissions = await this.permissionsService.resolvePermissions(user.id, user.role);
-    const accessTokenExpiresInSeconds = this.sessionPolicyRuntimeService.getAccessTokenExpiresInSeconds(
-      policy,
-      now,
-      now,
-    );
+    const accessTokenExpiresInSeconds =
+      this.sessionPolicyRuntimeService.getAccessTokenExpiresInSeconds(policy, now, now);
 
     const jwtPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
       sub: user.id,
@@ -152,7 +206,7 @@ export class AuthService {
       expiresIn: accessTokenExpiresInSeconds,
     });
     const refreshToken = await this.jwtService.signAsync(refreshTokenPayload, {
-      expiresIn: `${policy.maxSessionDurationHours}h`,
+      expiresIn: `${policy.maxSessionDurationHours ?? 8}h`,
     });
 
     // Store session
@@ -163,7 +217,7 @@ export class AuthService {
       refreshTokenHash,
       ipAddress,
       userAgent,
-      expiresAt: new Date(now.getTime() + policy.maxSessionDurationHours * 60 * 60 * 1000),
+      expiresAt: new Date(now.getTime() + (policy.maxSessionDurationHours ?? 8) * 60 * 60 * 1000),
       createdAt: now,
       lastActivityAt: now,
     });
@@ -171,14 +225,22 @@ export class AuthService {
     // Clear failed attempts
     await this.securityService.resetFailedAttempts(email);
 
-    // Update last login
+    // Update last login and bind tenant
     await this.dbService.db
       .update(users)
-      .set({ lastLoginAt: new Date() })
+      .set({ lastLoginAt: new Date(), tenantId: tenantId })
       .where(eq(users.id, user.id));
 
     // Audit
-    await this.recordAudit(user.id, user.email, AuditEventType.LOGIN_SUCCESS, ipAddress, userAgent, { tenantId });
+    await this.recordAudit(
+      user.id,
+      user.email,
+      AuditEventType.LOGIN_SUCCESS,
+      ipAddress,
+      userAgent,
+      { tenantId },
+      tenantId,
+    );
 
     // Handle forced password change
     if (user.mustChangePassword || user.state === 'pending_password_change') {
@@ -227,7 +289,13 @@ export class AuthService {
   /**
    * Logout — invalidate the current session.
    */
-  async logout(sessionId: string, userId: string, ipAddress: string, userAgent: string): Promise<void> {
+  async logout(
+    sessionId: string,
+    userId: string,
+    ipAddress: string,
+    userAgent: string,
+    tenantId: string,
+  ): Promise<void> {
     const userRows = await this.dbService.db
       .select()
       .from(users)
@@ -246,7 +314,15 @@ export class AuthService {
       .where(eq(sessions.id, sessionId));
 
     if (user) {
-      await this.recordAudit(userId, user.email, AuditEventType.LOGOUT, ipAddress, userAgent, {});
+      await this.recordAudit(
+        userId,
+        user.email,
+        AuditEventType.LOGOUT,
+        ipAddress,
+        userAgent,
+        {},
+        tenantId,
+      );
     }
   }
 
@@ -257,7 +333,17 @@ export class AuthService {
     refreshToken: string,
     ipAddress: string,
     userAgent: string,
-  ): Promise<{ accessToken: string; refreshToken: string } | null> {
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    user: {
+      id: string;
+      email: string;
+      role: string;
+      tenantId: string;
+      mustChangePassword: boolean;
+    };
+  } | null> {
     try {
       const payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(refreshToken);
 
@@ -283,6 +369,7 @@ export class AuthService {
           userAgent,
         },
         now,
+        payload.tid,
       );
 
       if (!activeSession) {
@@ -294,12 +381,13 @@ export class AuthService {
         return null;
       }
 
-      const policy = await this.sessionPolicyRuntimeService.getRuntimePolicy();
-      const accessTokenExpiresInSeconds = this.sessionPolicyRuntimeService.getAccessTokenExpiresInSeconds(
-        policy,
-        activeSession.createdAt,
-        now,
-      );
+      const policy = await this.sessionPolicyRuntimeService.getRuntimePolicy(payload.tid);
+      const accessTokenExpiresInSeconds =
+        this.sessionPolicyRuntimeService.getAccessTokenExpiresInSeconds(
+          policy,
+          activeSession.createdAt,
+          now,
+        );
 
       // Rotate tokens
       const newPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
@@ -323,12 +411,30 @@ export class AuthService {
           jti: activeSession.id,
           tokenVersion: user.tokenVersion,
         },
-        { expiresIn: `${policy.maxSessionDurationHours}h` },
+        { expiresIn: `${policy.maxSessionDurationHours ?? 8}h` },
       );
 
-      await this.recordAudit(user.id, user.email, AuditEventType.SESSION_REFRESHED, ipAddress, userAgent, {});
+      await this.recordAudit(
+        user.id,
+        user.email,
+        AuditEventType.SESSION_REFRESHED,
+        ipAddress,
+        userAgent,
+        {},
+        payload.tid,
+      );
 
-      return { accessToken, refreshToken: newRefreshToken };
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          tenantId: payload.tid,
+          mustChangePassword: user.mustChangePassword,
+        },
+      };
     } catch {
       return null;
     }
@@ -341,8 +447,10 @@ export class AuthService {
     ipAddress: string,
     userAgent: string,
     metadata: Record<string, unknown>,
+    tenantId: string,
   ) {
     await this.dbService.db.insert(auditEvents).values({
+      tenantId,
       eventType,
       actorId,
       actorEmail,

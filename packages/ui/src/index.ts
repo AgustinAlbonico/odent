@@ -6,4 +6,7 @@ export * from './components/card';
 export * from './components/badge';
 export * from './components/skeleton';
 export * from './components/skeleton-presets';
-export { cn, focusRing, disabledStyles } from './lib/utils';
+export * from './components/tabs';
+export * from './components/alert';
+export * from './components/avatar';
+export { cn, focusRing, hoverTransition, interactiveTransition, disabledStyles } from './lib/utils';

@@ -77,13 +77,24 @@ export const recoveryResetSchema = z
 export type RecoveryResetInput = z.infer<typeof recoveryResetSchema>;
 
 // ─── Session Policy (admin configurable) ──────────────
-export const sessionPolicySchema = z.object({
-  inactivityTimeoutMinutes: z.number().int().min(5).max(480),
-  maxSessionDurationHours: z.number().int().min(1).max(24),
-  maxConcurrentSessions: z.number().int().min(1).max(10),
-});
+export const sessionPolicySchema = z
+  .object({
+    inactivityTimeoutMinutes: z.number().int().min(5).max(480).optional(),
+    maxSessionDurationHours: z.number().int().min(1).max(24).optional(),
+    maxConcurrentSessions: z.number().int().min(1).max(10).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one policy field must be provided',
+  });
 
 export type SessionPolicyInput = z.infer<typeof sessionPolicySchema>;
+
+// Full resolved policy (all fields guaranteed) — used at runtime
+export type ResolvedSessionPolicy = {
+  inactivityTimeoutMinutes: number;
+  maxSessionDurationHours: number;
+  maxConcurrentSessions: number;
+};
 
 // ─── Audit Export ─────────────────────────────────────
 export const auditExportSchema = z.object({
@@ -94,3 +105,15 @@ export const auditExportSchema = z.object({
 });
 
 export type AuditExportInput = z.infer<typeof auditExportSchema>;
+
+// ─── Profile Update (self-service) ───────────────────
+export const profileUpdateSchema = z.object({
+  firstName: z.string().min(1, 'El nombre es requerido').max(100).optional(),
+  lastName: z.string().min(1, 'El apellido es requerido').max(100).optional(),
+  phone: z.string().max(50).optional().or(z.literal('')),
+  licenseNumber: z.string().max(50).optional().or(z.literal('')),
+  specialty: z.string().max(200).optional().or(z.literal('')),
+  dni: z.string().max(20).optional().or(z.literal('')),
+});
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;

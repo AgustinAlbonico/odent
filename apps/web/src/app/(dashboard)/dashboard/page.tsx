@@ -1,10 +1,18 @@
 'use client';
 
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@sistema-odontologico/ui';
-import { useAuth } from '@/hooks/use-auth';
-import { useAbilities } from '@/hooks/use-abilities';
 import { Action, Module } from '@sistema-odontologico/permissions';
-import { LayoutDashboard, Loader2, ShieldCheck, Stethoscope, Building2 } from 'lucide-react';
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@sistema-odontologico/ui';
+import { Building2, LayoutDashboard, Loader2, ShieldCheck, Stethoscope } from 'lucide-react';
+import { DashboardTodayAppointmentsCard } from '@/components/dashboard/DashboardTodayAppointmentsCard';
+import { useAbilities } from '@/hooks/use-abilities';
+import { useAuth } from '@/hooks/use-auth';
 
 const MODULE_LABELS: Partial<Record<Module, string>> = {
   [Module.DASHBOARD]: 'Dashboard',
@@ -74,7 +82,8 @@ export default function DashboardPage() {
           Bienvenido, {user.firstName ?? user.email}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Este dashboard concentra el estado de acceso actual y los controles sensibles ya conectados en runtime.
+          Este dashboard concentra el estado de acceso actual y los controles sensibles ya
+          conectados en runtime.
         </p>
       </div>
 
@@ -110,11 +119,14 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Menú y acceso base calculados desde <code className="font-mono text-xs">/auth/abilities</code>.
+              Menú y acceso base calculados desde{' '}
+              <code className="font-mono text-xs">/auth/abilities</code>.
             </p>
           </CardContent>
         </Card>
       </section>
+
+      <DashboardTodayAppointmentsCard user={user} />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>

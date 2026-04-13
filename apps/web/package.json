@@ -13,15 +13,23 @@
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/list": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
     "@sistema-odontologico/auth-core": "workspace:*",
     "@sistema-odontologico/config": "workspace:*",
     "@sistema-odontologico/permissions": "workspace:*",
     "@sistema-odontologico/types": "workspace:*",
     "@sistema-odontologico/ui": "workspace:*",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.511.0",
     "next": "16.1.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-day-picker": "^9.14.0",
+    "react-dom": "19.1.0",
+    "react-easy-crop": "^5.5.7"
   },
   "devDependencies": {
     "@sistema-odontologico/tsconfig": "workspace:*",

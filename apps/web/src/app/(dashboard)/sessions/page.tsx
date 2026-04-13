@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Badge,
+  hoverTransition,
 } from '@sistema-odontologico/ui';
 import { useAuth } from '@/hooks/use-auth';
 import { useAbilities } from '@/hooks/use-abilities';
@@ -18,13 +19,7 @@ import {
   type ActiveSession,
   type PaginatedResponse,
 } from '@/lib/auth/api';
-import {
-  Shield,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  XCircle,
-} from 'lucide-react';
+import { Shield, ChevronLeft, ChevronRight, Loader2, XCircle } from 'lucide-react';
 import { Action, Module } from '@sistema-odontologico/permissions';
 
 /* ------------------------------------------------------------------ */
@@ -57,18 +52,10 @@ function ConfirmCloseModal({
             El usuario deber&aacute; iniciar sesi&oacute;n nuevamente.
           </p>
           <div className="flex items-center justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              disabled={isClosing}
-            >
+            <Button variant="outline" onClick={onCancel} disabled={isClosing}>
               Cancelar
             </Button>
-            <Button
-              variant="destructive"
-              onClick={onConfirm}
-              disabled={isClosing}
-            >
+            <Button variant="destructive" onClick={onConfirm} disabled={isClosing}>
               {isClosing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -106,10 +93,12 @@ function parseUserAgent(ua: string): string {
   // Simple UA parsing — extract browser and OS
   if (ua.includes('Chrome') && !ua.includes('Edg'))
     return `Chrome${ua.match(/Chrome\/(\d+)/)?.[1] ? ` ${ua.match(/Chrome\/(\d+)/)?.[1]}` : ''}`;
-  if (ua.includes('Firefox')) return `Firefox${ua.match(/Firefox\/(\d+)/)?.[1] ? ` ${ua.match(/Firefox\/(\d+)/)?.[1]}` : ''}`;
+  if (ua.includes('Firefox'))
+    return `Firefox${ua.match(/Firefox\/(\d+)/)?.[1] ? ` ${ua.match(/Firefox\/(\d+)/)?.[1]}` : ''}`;
   if (ua.includes('Safari') && !ua.includes('Chrome'))
     return `Safari${ua.match(/Version\/(\d+)/)?.[1] ? ` ${ua.match(/Version\/(\d+)/)?.[1]}` : ''}`;
-  if (ua.includes('Edg')) return `Edge${ua.match(/Edg\/(\d+)/)?.[1] ? ` ${ua.match(/Edg\/(\d+)/)?.[1]}` : ''}`;
+  if (ua.includes('Edg'))
+    return `Edge${ua.match(/Edg\/(\d+)/)?.[1] ? ` ${ua.match(/Edg\/(\d+)/)?.[1]}` : ''}`;
   return ua.length > 40 ? `${ua.slice(0, 40)}...` : ua;
 }
 
@@ -275,13 +264,11 @@ export default function SessionsPage() {
                     {data?.data.map((session) => (
                       <tr
                         key={session.id}
-                        className="border-b border-border transition-colors hover:bg-muted/50"
+                        className="border-b border-border transition-colors duration-150 ease-out hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 text-sm">
                           <div className="font-medium">{session.userName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {session.userEmail}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{session.userEmail}</div>
                         </td>
                         <td className="px-4 py-3 text-sm font-mono tabular-nums">
                           {session.ipAddress}
@@ -304,7 +291,7 @@ export default function SessionsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setSessionToClose(session)}
-                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              className={`text-destructive hover:bg-destructive/10 hover:text-destructive ${hoverTransition}`}
                             >
                               <XCircle className="h-4 w-4" />
                               Cerrar

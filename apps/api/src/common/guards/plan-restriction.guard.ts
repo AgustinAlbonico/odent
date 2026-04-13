@@ -119,6 +119,7 @@ export class PlanRestrictionGuard implements CanActivate {
     const { auditEvents } = await import('../../infra/database/schema.js');
 
     await this.dbService.db.insert(auditEvents).values({
+      tenantId: user.tid,
       eventType: AuditEventType.PLAN_QUOTA_BLOCKED,
       actorId: user.sub,
       actorEmail: user.email,

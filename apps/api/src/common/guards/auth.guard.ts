@@ -31,10 +31,7 @@ function readMetadata<T>(
   }
 
   // Fallback: direct Reflect API
-  return (
-    Reflect.getMetadata(key, handler) ??
-    Reflect.getMetadata(key, cls)
-  );
+  return Reflect.getMetadata(key, handler) ?? Reflect.getMetadata(key, cls);
 }
 
 /**
@@ -101,6 +98,7 @@ export class AuthGuard implements CanActivate {
       userEmail: payload.email,
       ipAddress: request.ip ?? 'unknown',
       userAgent: request.get?.('user-agent') ?? request.headers?.['user-agent'] ?? 'unknown',
+      tenantId: payload.tid,
     });
 
     // Check forced password change
@@ -115,15 +113,17 @@ export class AuthGuard implements CanActivate {
     }
 
     // Check permission requirements
-    const permissionMeta = readMetadata<PermissionMetadata>(this.reflector, PERMISSION_KEY, handler, cls);
+    const permissionMeta = readMetadata<PermissionMetadata>(
+      this.reflector,
+      PERMISSION_KEY,
+      handler,
+      cls,
+    );
 
     if (!permissionMeta) return true; // No permission required
 
     // Resolve permissions for user
-    const permissions = await this.permissionsService.resolvePermissions(
-      payload.sub,
-      payload.role,
-    );
+    const permissions = await this.permissionsService.resolvePermissions(payload.sub, payload.role);
 
     const { module, action, scope } = permissionMeta;
 

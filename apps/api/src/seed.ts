@@ -23,6 +23,7 @@ interface SeedTenant {
   name: string;
   schema: string;
   users: SeedUser[];
+  patients: SeedPatient[];
 }
 
 interface SeedUser {
@@ -30,7 +31,18 @@ interface SeedUser {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'profesional' | 'asistente' | 'profesional_supervisor';
+  role: 'superadmin' | 'profesional' | 'recepcionista';
+}
+
+interface SeedPatient {
+  firstName: string;
+  lastName: string;
+  dni: string;
+  sex: 'male' | 'female';
+  phone: string;
+  email: string;
+  birthDate: string;
+  address: string;
 }
 
 const SEED_TENANTS: SeedTenant[] = [
@@ -43,14 +55,14 @@ const SEED_TENANTS: SeedTenant[] = [
         password: 'Admin123!',
         firstName: 'Admin',
         lastName: 'Albo',
-        role: 'admin',
+        role: 'superadmin',
       },
       {
         email: 'admin@demo.com',
         password: 'Admin123!',
         firstName: 'Admin',
         lastName: 'Demo',
-        role: 'admin',
+        role: 'superadmin',
       },
       {
         email: 'profesional@demo.com',
@@ -60,18 +72,53 @@ const SEED_TENANTS: SeedTenant[] = [
         role: 'profesional',
       },
       {
-        email: 'asistente@demo.com',
-        password: 'Asistente123!',
-        firstName: 'Carlos',
+        email: 'recepcionista@demo.com',
+        password: 'Recepcionista123!',
+        firstName: 'Carla',
         lastName: 'López',
-        role: 'asistente',
+        role: 'recepcionista',
+      },
+    ],
+    patients: [
+      {
+        firstName: 'Juan',
+        lastName: 'Pérez',
+        dni: '30123456',
+        sex: 'male',
+        phone: '11-5555-0101',
+        email: 'juan.perez@email.com',
+        birthDate: '1988-05-14',
+        address: 'Av. Corrientes 1234, CABA',
       },
       {
-        email: 'supervisor@demo.com',
-        password: 'Supervisor123!',
-        firstName: 'Dr. Roberto',
+        firstName: 'Ana',
         lastName: 'Martínez',
-        role: 'profesional_supervisor',
+        dni: '32456789',
+        sex: 'female',
+        phone: '11-5555-0202',
+        email: 'ana.martinez@email.com',
+        birthDate: '1992-11-22',
+        address: 'Calle Lavalle 567, CABA',
+      },
+      {
+        firstName: 'Lucas',
+        lastName: 'Sánchez',
+        dni: '35890123',
+        sex: 'male',
+        phone: '11-5555-0303',
+        email: 'lucas.sanchez@email.com',
+        birthDate: '1995-03-08',
+        address: 'Av. Santa Fe 890, CABA',
+      },
+      {
+        firstName: 'Sofía',
+        lastName: 'Torres',
+        dni: '38234567',
+        sex: 'female',
+        phone: '11-5555-0404',
+        email: 'sofia.torres@email.com',
+        birthDate: '1999-07-30',
+        address: 'Av. Cabildo 456, CABA',
       },
     ],
   },
@@ -84,7 +131,7 @@ const SEED_TENANTS: SeedTenant[] = [
         password: 'AdminSur123!',
         firstName: 'Admin',
         lastName: 'Sur',
-        role: 'admin',
+        role: 'superadmin',
       },
       {
         email: 'profesional@clinicasur.com',
@@ -94,18 +141,53 @@ const SEED_TENANTS: SeedTenant[] = [
         role: 'profesional',
       },
       {
-        email: 'asistente@clinicasur.com',
-        password: 'AsistenteSur123!',
-        firstName: 'Martín',
+        email: 'recepcionista@clinicasur.com',
+        password: 'RecepcionistaSur123!',
+        firstName: 'Marta',
         lastName: 'Rodríguez',
-        role: 'asistente',
+        role: 'recepcionista',
+      },
+    ],
+    patients: [
+      {
+        firstName: 'Diego',
+        lastName: 'Ramírez',
+        dni: '29345678',
+        sex: 'male',
+        phone: '11-6666-0101',
+        email: 'diego.ramirez@email.com',
+        birthDate: '1985-09-12',
+        address: 'Av. Rivadavia 7890, CABA',
       },
       {
-        email: 'supervisor@clinicasur.com',
-        password: 'SupervisorSur123!',
-        firstName: 'Dr. Pablo',
+        firstName: 'Valentina',
+        lastName: 'Gómez',
+        dni: '34678901',
+        sex: 'female',
+        phone: '11-6666-0202',
+        email: 'valentina.gomez@email.com',
+        birthDate: '1993-01-25',
+        address: 'Calle Florida 234, CABA',
+      },
+      {
+        firstName: 'Tomás',
+        lastName: 'Díaz',
+        dni: '37012345',
+        sex: 'male',
+        phone: '11-6666-0303',
+        email: 'tomas.diaz@email.com',
+        birthDate: '1997-06-18',
+        address: 'Av. Belgrano 567, CABA',
+      },
+      {
+        firstName: 'Camila',
         lastName: 'Herrera',
-        role: 'profesional_supervisor',
+        dni: '38945612',
+        sex: 'female',
+        phone: '11-6666-0404',
+        email: 'camila.herrera@email.com',
+        birthDate: '1998-10-04',
+        address: 'Av. San Juan 1450, CABA',
       },
     ],
   },
@@ -151,19 +233,81 @@ async function seed() {
           SELECT id FROM users WHERE email = ${user.email}
         `;
 
+        const passwordHash = await bcrypt.hash(user.password, 10);
+
         if (existing.length > 0) {
-          console.log(`    ⏭️  ${user.email} — already exists, skipping`);
+          // Update tenant_id for existing users that don't have it yet
+          await sql`
+            UPDATE users SET tenant_id = ${tenantId} WHERE email = ${user.email} AND tenant_id IS NULL
+          `;
+          console.log(`    ⏭️  ${user.email} — already exists, tenant_id updated`);
           continue;
         }
 
-        const passwordHash = await bcrypt.hash(user.password, 10);
-
         await sql`
-          INSERT INTO users (email, password_hash, first_name, last_name, role, state)
-          VALUES (${user.email}, ${passwordHash}, ${user.firstName}, ${user.lastName}, ${user.role}, 'active')
+          INSERT INTO users (email, password_hash, first_name, last_name, role, state, tenant_id)
+          VALUES (${user.email}, ${passwordHash}, ${user.firstName}, ${user.lastName}, ${user.role}, 'active', ${tenantId})
         `;
 
         console.log(`    ✅ ${user.email} (${user.role}) — password: ${user.password}`);
+      }
+
+      // ── Seed patients for this tenant ──────────────────
+
+      console.log('\n  🏥 Seeding patients...\n');
+
+      for (const patient of tenant.patients) {
+        const existing = await sql`
+          SELECT id, tenant_id
+          FROM patients
+          WHERE dni = ${patient.dni}
+          ORDER BY CASE WHEN tenant_id = ${tenantId} THEN 0 ELSE 1 END, created_at ASC
+        `;
+
+        if (existing.length > 0) {
+          const existingId = String(existing[0]?.id ?? '');
+          const previousTenantId = String(existing[0]?.tenant_id ?? '');
+          const tenantChanged = previousTenantId !== tenantId;
+
+          await sql`
+            UPDATE patients
+            SET
+              tenant_id = ${tenantId},
+              first_name = ${patient.firstName},
+              last_name = ${patient.lastName},
+              sex = ${patient.sex},
+              phone = ${patient.phone},
+              email = ${patient.email},
+              birth_date = ${patient.birthDate},
+              address = ${patient.address},
+              state = 'active',
+              updated_at = NOW()
+            WHERE id = ${existingId}
+          `;
+
+          console.log(
+            `    ⏭️  ${patient.firstName} ${patient.lastName} (DNI: ${patient.dni}) — updated${tenantChanged ? ', tenant reassigned' : ''}`,
+          );
+          continue;
+        }
+
+        await sql`
+          INSERT INTO patients (first_name, last_name, dni, sex, phone, email, birth_date, address, state, tenant_id)
+          VALUES (
+            ${patient.firstName},
+            ${patient.lastName},
+            ${patient.dni},
+            ${patient.sex},
+            ${patient.phone},
+            ${patient.email},
+            ${patient.birthDate},
+            ${patient.address},
+            'active',
+            ${tenantId}
+          )
+        `;
+
+        console.log(`    ✅ ${patient.firstName} ${patient.lastName} (DNI: ${patient.dni})`);
       }
 
       console.log('');
@@ -198,7 +342,6 @@ async function seed() {
     if (allTenantIds[0]) {
       await updateEnvFile(allTenantIds[0]);
     }
-
   } finally {
     await sql.end();
   }

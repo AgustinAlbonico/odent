@@ -138,8 +138,8 @@ describe('Audit Trail — Integration', () => {
     it('ACCESS_DENIED event records who tried what', () => {
       recordEvent({
         eventType: AuditEventType.ACCESS_DENIED,
-        actorId: 'asistente-1',
-        actorEmail: 'asistente@test.com',
+        actorId: 'recepcionista-1',
+        actorEmail: 'recepcionista@test.com',
         ipAddress: '192.168.1.1',
         userAgent: 'Chrome',
         metadata: {

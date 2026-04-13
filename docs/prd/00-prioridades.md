@@ -83,5 +83,5 @@ Este orden se definió a partir del relevamiento funcional de CLINICUS y del ped
   - roles inferidos/observados,
   - y el detalle adicional provisto por el usuario.
 - El resto de los PRDs se apoya principalmente en evidencia observada en:
-  - `RELEVAMIENTO-CLINICUS.md`
-  - `.clavix/outputs/prompts/std-20260330-194215-c4f1.md`
+  - `docs/investigacion/relevamiento-clinicus.md`
+  - `docs/investigacion/investigacion-mercado-software-odontologico-argentina.md`

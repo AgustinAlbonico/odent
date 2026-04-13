@@ -97,12 +97,16 @@ function createFakeProfessionalsDb(options?: {
 
         if (table === tenants) {
           return {
-            set: vi.fn().mockImplementation((payload: { activeProfessionalCount: number; updatedAt: Date }) => ({
-              where: vi.fn().mockImplementation(async () => {
-                tenant.activeProfessionalCount = payload.activeProfessionalCount;
-                tenant.updatedAt = payload.updatedAt;
-              }),
-            })),
+            set: vi
+              .fn()
+              .mockImplementation(
+                (payload: { activeProfessionalCount: number; updatedAt: Date }) => ({
+                  where: vi.fn().mockImplementation(async () => {
+                    tenant.activeProfessionalCount = payload.activeProfessionalCount;
+                    tenant.updatedAt = payload.updatedAt;
+                  }),
+                }),
+              ),
           };
         }
 
@@ -140,10 +144,7 @@ describe('Professionals runtime contracts', () => {
 
   it('keeps RBAC metadata separate from plan restriction metadata', () => {
     expect(
-      Reflect.getMetadata(
-        PERMISSION_KEY,
-        ProfessionalsController.prototype.createProfessional,
-      ),
+      Reflect.getMetadata(PERMISSION_KEY, ProfessionalsController.prototype.createProfessional),
     ).toEqual({
       module: Module.PROFESSIONALS,
       action: Action.CREATE,
@@ -151,10 +152,7 @@ describe('Professionals runtime contracts', () => {
     });
 
     expect(
-      Reflect.getMetadata(
-        PERMISSION_KEY,
-        ProfessionalsController.prototype.activateProfessional,
-      ),
+      Reflect.getMetadata(PERMISSION_KEY, ProfessionalsController.prototype.activateProfessional),
     ).toEqual({
       module: Module.PROFESSIONALS,
       action: Action.CHANGE_STATUS,
@@ -222,7 +220,11 @@ describe('Professionals runtime contracts', () => {
     vi.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-temporary-secret' as never);
 
     const fakeDb = createFakeProfessionalsDb({ tenantCount: 1 });
-    const service = new ProfessionalsService(fakeDb as never, { checkProfessionalQuota: vi.fn() } as never);
+    const service = new ProfessionalsService(
+      fakeDb as never,
+      { checkProfessionalQuota: vi.fn() } as never,
+      {} as never,
+    );
 
     const created = await service.createProfessional('tenant-1', {
       firstName: 'Ana',
@@ -264,7 +266,11 @@ describe('Professionals runtime contracts', () => {
         },
       ],
     });
-    const service = new ProfessionalsService(fakeDb as never, { checkProfessionalQuota: vi.fn() } as never);
+    const service = new ProfessionalsService(
+      fakeDb as never,
+      { checkProfessionalQuota: vi.fn() } as never,
+      {} as never,
+    );
 
     const activated = await service.activateProfessional('tenant-1', 'professional-1');
 
@@ -294,7 +300,11 @@ describe('Professionals runtime contracts', () => {
         },
       ],
     });
-    const service = new ProfessionalsService(fakeDb as never, { checkProfessionalQuota: vi.fn() } as never);
+    const service = new ProfessionalsService(
+      fakeDb as never,
+      { checkProfessionalQuota: vi.fn() } as never,
+      {} as never,
+    );
 
     const reactivated = await service.reactivateProfessional('tenant-1', 'professional-2');
 
@@ -323,7 +333,11 @@ describe('Professionals runtime contracts', () => {
         },
       ],
     });
-    const service = new ProfessionalsService(fakeDb as never, { checkProfessionalQuota: vi.fn() } as never);
+    const service = new ProfessionalsService(
+      fakeDb as never,
+      { checkProfessionalQuota: vi.fn() } as never,
+      {} as never,
+    );
 
     await expect(
       service.createProfessional('tenant-1', {

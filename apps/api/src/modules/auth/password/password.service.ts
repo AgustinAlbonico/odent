@@ -56,7 +56,7 @@ export class PasswordService {
     });
 
     // Audit
-    await this.recordAudit(user.id, user.email, AuditEventType.RECOVERY_REQUESTED, ipAddress, userAgent, {});
+    await this.recordAudit(user.id, user.email, AuditEventType.RECOVERY_REQUESTED, ipAddress, userAgent, {}, user.tenantId!);
 
     if (this.isSmtpConfigured()) {
       // Send email with reset link
@@ -164,12 +164,12 @@ export class PasswordService {
 
     this.securityService?.resetFailedAttempts(user.email);
 
-    await this.recordAudit(user.id, user.email, AuditEventType.RECOVERY_COMPLETED, ipAddress, userAgent, {});
+    await this.recordAudit(user.id, user.email, AuditEventType.RECOVERY_COMPLETED, ipAddress, userAgent, {}, user.tenantId!);
 
     if (requiresRehabilitation) {
       await this.recordAudit(user.id, user.email, AuditEventType.ACCOUNT_REHABILITATED, ipAddress, userAgent, {
         source: 'recovery_reset',
-      });
+      }, user.tenantId!);
     }
 
     return true;
@@ -203,7 +203,7 @@ export class PasswordService {
       .set({ passwordHash: hash, tokenVersion: sql`${users.tokenVersion} + 1` })
       .where(eq(users.id, userId));
 
-    await this.recordAudit(userId, user.email, AuditEventType.PASSWORD_CHANGED, ipAddress, userAgent, {});
+    await this.recordAudit(userId, user.email, AuditEventType.PASSWORD_CHANGED, ipAddress, userAgent, {}, user.tenantId!);
 
     return true;
   }
@@ -245,7 +245,7 @@ export class PasswordService {
       .set({ closedAt: new Date(), closeReason: 'forced_password_change' })
       .where(eq(sessions.userId, userId));
 
-    await this.recordAudit(userId, user.email, AuditEventType.PASSWORD_FORCED_CHANGE, ipAddress, userAgent, {});
+    await this.recordAudit(userId, user.email, AuditEventType.PASSWORD_FORCED_CHANGE, ipAddress, userAgent, {}, user.tenantId!);
 
     return true;
   }
@@ -282,12 +282,12 @@ export class PasswordService {
       targetUserId: user.id,
       targetUserEmail: user.email,
       source: 'admin_rehabilitation',
-    });
+    }, user.tenantId!);
     await this.recordAudit(user.id, user.email, AuditEventType.ACCOUNT_REHABILITATED, ipAddress, userAgent, {
       source: 'admin_rehabilitation',
       performedByUserId: actor.sub,
       performedByEmail: actor.email,
-    });
+    }, user.tenantId!);
 
     return true;
   }
@@ -299,8 +299,10 @@ export class PasswordService {
     ipAddress: string,
     userAgent: string,
     metadata: Record<string, unknown>,
+    tenantId: string,
   ) {
     await this.dbService.db.insert(auditEvents).values({
+      tenantId,
       eventType,
       actorId,
       actorEmail,

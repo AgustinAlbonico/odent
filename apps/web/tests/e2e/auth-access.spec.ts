@@ -39,14 +39,14 @@ test.describe('Login and role-based redirect', () => {
   });
 
   test.skip('Asistente login redirects to reception dashboard', async ({ page }) => {
-    // 1. Login as asistente
+    // 1. Login as recepcionista
     // 2. Assert redirect to /dashboard (operational view)
     // 3. Verify sidebar shows operational modules (8)
     // 4. No clinical/admin modules visible
   });
 
   test.skip('Supervisor login redirects to supervision dashboard', async ({ page }) => {
-    // 1. Login as profesional_supervisor
+    // 1. Login as profesional
     // 2. Assert redirect to /dashboard (supervision view)
     // 3. Verify sidebar shows clinical + supervision modules
   });

@@ -7,7 +7,7 @@ import { useAuthContext } from '@/lib/auth/context';
  * Wraps AuthContext for simpler consumption in components.
  */
 export function useAuth() {
-  const { user, isLoading, isAuthenticated, login, logout } = useAuthContext();
+  const { user, isLoading, isAuthenticated, login, logout, refresh } = useAuthContext();
 
   return {
     user,
@@ -15,5 +15,6 @@ export function useAuth() {
     isAuthenticated,
     login,
     logout,
+    refresh,
   };
 }

@@ -1,7 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@sistema-odontologico/ui';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@sistema-odontologico/ui';
 import { Badge, Button } from '@sistema-odontologico/ui';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -27,11 +33,9 @@ function formatDate(iso: string): string {
 
 function eventTypeBadgeVariant(eventType: string) {
   const normalized = eventType.toLowerCase();
-  if (normalized.includes('login') || normalized.includes('auth'))
-    return 'default' as const;
+  if (normalized.includes('login') || normalized.includes('auth')) return 'default' as const;
   if (normalized.includes('logout')) return 'secondary' as const;
-  if (normalized.includes('fail') || normalized.includes('error'))
-    return 'destructive' as const;
+  if (normalized.includes('fail') || normalized.includes('error')) return 'destructive' as const;
   return 'outline' as const;
 }
 
@@ -152,7 +156,7 @@ export default function SecurityPage() {
                     {data?.data.map((event) => (
                       <tr
                         key={event.id}
-                        className="border-b border-border transition-colors hover:bg-muted/50"
+                        className="border-b border-border transition-colors duration-150 ease-out hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 text-sm font-mono tabular-nums">
                           {formatDate(event.timestamp)}

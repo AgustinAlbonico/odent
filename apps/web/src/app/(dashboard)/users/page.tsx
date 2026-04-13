@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   Badge,
+  hoverTransition,
   Input,
   Label,
   SkeletonTable,
@@ -51,10 +52,9 @@ import { Action, Module } from '@sistema-odontologico/permissions';
 
 const ROLES = [
   { value: '', label: 'Todos' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'superadmin', label: 'Super Admin' },
   { value: 'profesional', label: 'Profesional' },
-  { value: 'asistente', label: 'Asistente' },
-  { value: 'profesional_supervisor', label: 'Supervisor' },
+  { value: 'recepcionista', label: 'Recepcionista' },
 ] as const;
 
 const STATES = [
@@ -66,10 +66,9 @@ const STATES = [
 ] as const;
 
 const ROLE_OPTIONS = [
-  { value: 'admin', label: 'Admin' },
+  { value: 'superadmin', label: 'Super Admin' },
   { value: 'profesional', label: 'Profesional' },
-  { value: 'asistente', label: 'Asistente' },
-  { value: 'profesional_supervisor', label: 'Supervisor' },
+  { value: 'recepcionista', label: 'Recepcionista' },
 ] as const;
 
 const STATE_OPTIONS = [
@@ -104,20 +103,18 @@ function formatDateTime(iso: string): string {
 
 function getRoleBadgeVariant(role: string): 'default' | 'secondary' | 'info' | 'warning' {
   const map: Record<string, 'default' | 'secondary' | 'info' | 'warning'> = {
-    admin: 'default',
+    superadmin: 'default',
     profesional: 'info',
-    asistente: 'secondary',
-    profesional_supervisor: 'warning',
+    recepcionista: 'secondary',
   };
   return map[role] ?? 'secondary';
 }
 
 function getRoleLabel(role: string): string {
   const map: Record<string, string> = {
-    admin: 'Admin',
+    superadmin: 'Super Admin',
     profesional: 'Profesional',
-    asistente: 'Asistente',
-    profesional_supervisor: 'Supervisor',
+    recepcionista: 'Recepcionista',
   };
   return map[role] ?? role;
 }
@@ -172,11 +169,7 @@ function validateCreateForm(data: {
   return errors;
 }
 
-function validateEditForm(data: {
-  firstName: string;
-  lastName: string;
-  role: string;
-}): FormErrors {
+function validateEditForm(data: { firstName: string; lastName: string; role: string }): FormErrors {
   const errors: FormErrors = {};
   if (!data.firstName.trim()) errors.firstName = 'El nombre es obligatorio';
   if (!data.lastName.trim()) errors.lastName = 'El apellido es obligatorio';
@@ -282,10 +275,7 @@ export default function UsersPage() {
   const fetchUserDetail = useCallback(async (userId: string) => {
     setDetailLoading(true);
     try {
-      const [detail, perms] = await Promise.all([
-        getUser(userId),
-        getUserPermissions(userId),
-      ]);
+      const [detail, perms] = await Promise.all([getUser(userId), getUserPermissions(userId)]);
       setUserDetail(detail);
       setUserPermissions(perms);
     } catch (err) {
@@ -479,9 +469,7 @@ export default function UsersPage() {
           onChangeState={(userId, userName, newState) =>
             handleConfirmChangeState(userId, userName, newState)
           }
-          onForcePassword={(userId, userName) =>
-            handleConfirmForcePassword(userId, userName)
-          }
+          onForcePassword={(userId, userName) => handleConfirmForcePassword(userId, userName)}
           isSelf={currentUser?.id === selectedUserId}
         />
       ) : (
@@ -611,7 +599,7 @@ export default function UsersPage() {
                         {users.map((user) => (
                           <tr
                             key={user.id}
-                            className="border-b border-border transition-colors hover:bg-muted/50"
+                            className="border-b border-border transition-colors duration-150 ease-out hover:bg-muted/50"
                           >
                             <td className="px-4 py-3 text-sm">
                               <div className="font-medium">
@@ -847,9 +835,7 @@ export default function UsersPage() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <CardDescription>
-                Modific&aacute; los datos del usuario.
-              </CardDescription>
+              <CardDescription>Modific&aacute; los datos del usuario.</CardDescription>
             </CardHeader>
             <CardContent>
               {editError && (
@@ -899,9 +885,7 @@ export default function UsersPage() {
                       </option>
                     ))}
                   </select>
-                  {editErrors.role && (
-                    <p className="text-xs text-destructive">{editErrors.role}</p>
-                  )}
+                  {editErrors.role && <p className="text-xs text-destructive">{editErrors.role}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -921,11 +905,7 @@ export default function UsersPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-3 border-t border-border pt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowEditForm(false)}
-                disabled={editing}
-              >
+              <Button variant="outline" onClick={() => setShowEditForm(false)} disabled={editing}>
                 Cancelar
               </Button>
               <Button onClick={handleEdit} disabled={editing}>
@@ -978,11 +958,7 @@ export default function UsersPage() {
                 >
                   Cancelar
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleConfirmExecute}
-                  disabled={confirming}
-                >
+                <Button variant="destructive" onClick={handleConfirmExecute} disabled={confirming}>
                   {confirming ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1071,11 +1047,7 @@ function UserDetailPanel({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  onChangeState(
-                    userDetail.id,
-                    fullName,
-                    getNextState(userDetail.state),
-                  )
+                  onChangeState(userDetail.id, fullName, getNextState(userDetail.state))
                 }
               >
                 <ToggleLeft className="h-4 w-4" />
@@ -1117,7 +1089,7 @@ function UserDetailPanel({
           <div className="mb-6 flex gap-4 border-b border-border">
             <button
               type="button"
-              className={`pb-2 text-sm font-medium transition-colors ${
+              className={`pb-2 text-sm font-medium ${hoverTransition} ${
                 tab === 'info'
                   ? 'border-b-2 border-primary text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -1128,7 +1100,7 @@ function UserDetailPanel({
             </button>
             <button
               type="button"
-              className={`pb-2 text-sm font-medium transition-colors ${
+              className={`pb-2 text-sm font-medium ${hoverTransition} ${
                 tab === 'permissions'
                   ? 'border-b-2 border-primary text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -1204,11 +1176,7 @@ function DetailField({
 /* Permissions View                                                    */
 /* ------------------------------------------------------------------ */
 
-function PermissionsView({
-  userPermissions,
-}: {
-  userPermissions: UserPermissionsResponse | null;
-}) {
+function PermissionsView({ userPermissions }: { userPermissions: UserPermissionsResponse | null }) {
   if (!userPermissions) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -1230,9 +1198,7 @@ function PermissionsView({
     <div className="space-y-6">
       {/* Custom permissions */}
       <div>
-        <h4 className="mb-3 text-sm font-semibold text-foreground">
-          Permisos personalizados
-        </h4>
+        <h4 className="mb-3 text-sm font-semibold text-foreground">Permisos personalizados</h4>
         {userPermissions.custom.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No tiene permisos personalizados. Hereda los del rol.
@@ -1264,9 +1230,7 @@ function PermissionsView({
           <Badge variant="secondary">{userPermissions.inherited.role}</Badge>
         </h4>
         {userPermissions.inherited.permissions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No hay permisos heredados definidos.
-          </p>
+          <p className="text-sm text-muted-foreground">No hay permisos heredados definidos.</p>
         ) : (
           <div className="space-y-3">
             {Object.entries(inheritedByModule).map(([module, perms]) => (

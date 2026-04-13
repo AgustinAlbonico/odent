@@ -1,4 +1,9 @@
-import { Injectable, type NestInterceptor, type ExecutionContext, type CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  type NestInterceptor,
+  type ExecutionContext,
+  type CallHandler,
+} from '@nestjs/common';
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { DatabaseService } from '../../infra/database/database.service.js';
@@ -35,12 +40,13 @@ export class AuditInterceptor implements NestInterceptor {
   }
 
   private async recordAccessDenied(
-    user: { sub: string; email: string },
+    user: { sub: string; email: string; tid?: string },
     request: any,
     reason: string,
   ) {
     try {
       await this.dbService.db.insert(auditEvents).values({
+        tenantId: user.tid ?? 'unknown',
         eventType: AuditEventType.ACCESS_DENIED,
         actorId: user.sub,
         actorEmail: user.email,

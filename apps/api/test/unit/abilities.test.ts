@@ -26,7 +26,7 @@ function createMockDbService(customPermissions: PermissionEntry[] = []) {
 describe('PermissionsService — abilities (canView, canOperate, getEffectiveScope)', () => {
   let service: PermissionsService;
 
-  describe('with default Admin permissions', () => {
+  describe('with default Superadmin permissions', () => {
     beforeEach(() => {
       const mockDb = createMockDbService();
       service = new PermissionsService(mockDb as any);
@@ -34,21 +34,21 @@ describe('PermissionsService — abilities (canView, canOperate, getEffectiveSco
 
     it('canView returns true for permitted modules (uses resolved perms)', async () => {
       // When custom permissions are empty, resolvePermissions falls back to role defaults
-      const adminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN];
-      expect(service.canView(adminPerms, Module.PATIENTS, Action.VIEW_LIST)).toBe(true);
-      expect(service.canView(adminPerms, Module.SYSTEM_CONFIG, Action.VIEW_MODULE)).toBe(true);
-      expect(service.canView(adminPerms, Module.AUDIT_ACCESS, Action.VIEW_AUDIT)).toBe(true);
+      const superadminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN];
+      expect(service.canView(superadminPerms, Module.PATIENTS, Action.VIEW_LIST)).toBe(true);
+      expect(service.canView(superadminPerms, Module.SYSTEM_CONFIG, Action.VIEW_MODULE)).toBe(true);
+      expect(service.canView(superadminPerms, Module.AUDIT_ACCESS, Action.VIEW_AUDIT)).toBe(true);
     });
 
     it('canOperate returns true for operative actions', () => {
-      const adminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN];
-      expect(service.canOperate(adminPerms, Module.PATIENTS, Action.CREATE)).toBe(true);
-      expect(service.canOperate(adminPerms, Module.USERS_ROLES_PERMISSIONS, Action.ADMIN_ROLES_PERMISSIONS)).toBe(true);
+      const superadminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN];
+      expect(service.canOperate(superadminPerms, Module.PATIENTS, Action.CREATE)).toBe(true);
+      expect(service.canOperate(superadminPerms, Module.USERS_ROLES_PERMISSIONS, Action.ADMIN_ROLES_PERMISSIONS)).toBe(true);
     });
 
-    it('getEffectiveScope returns INSTITUTIONAL_TOTAL for admin', () => {
-      const adminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ADMIN];
-      expect(service.getEffectiveScope(adminPerms, Module.PATIENTS, Action.VIEW_LIST)).toBe(
+    it('getEffectiveScope returns INSTITUTIONAL_TOTAL for superadmin', () => {
+      const supersuperadminPerms = DEFAULT_ROLE_PERMISSIONS[BaseRole.SUPERADMIN];
+      expect(service.getEffectiveScope(supersuperadminPerms, Module.PATIENTS, Action.VIEW_LIST)).toBe(
         Scope.INSTITUTIONAL_TOTAL,
       );
     });
@@ -91,16 +91,16 @@ describe('PermissionsService — abilities (canView, canOperate, getEffectiveSco
     });
   });
 
-  describe('with Asistente permissions', () => {
+  describe('with Recepcionista permissions', () => {
     it('canView returns false for clinical modules', () => {
-      const perms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ASISTENTE];
+      const perms = DEFAULT_ROLE_PERMISSIONS[BaseRole.RECEPCIONISTA];
       expect(service.canView(perms, Module.CLINICAL_HISTORY, Action.VIEW_MODULE)).toBe(false);
       expect(service.canView(perms, Module.ODONTOGRAM, Action.VIEW_MODULE)).toBe(false);
       expect(service.canView(perms, Module.PRESCRIPTIONS, Action.VIEW_MODULE)).toBe(false);
     });
 
     it('canView returns true for operational modules', () => {
-      const perms = DEFAULT_ROLE_PERMISSIONS[BaseRole.ASISTENTE];
+      const perms = DEFAULT_ROLE_PERMISSIONS[BaseRole.RECEPCIONISTA];
       expect(service.canView(perms, Module.PATIENTS, Action.VIEW_MODULE)).toBe(true);
       expect(service.canView(perms, Module.TURNS, Action.VIEW_MODULE)).toBe(true);
     });

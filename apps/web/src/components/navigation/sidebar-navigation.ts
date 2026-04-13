@@ -11,6 +11,7 @@ import {
   Smile,
   Stethoscope,
   Users,
+  UserCheck,
 } from 'lucide-react';
 import { Module, type PermissionEntry } from '@sistema-odontologico/permissions';
 import { getVisibleNavigationItems } from '../../lib/auth/routing';
@@ -25,6 +26,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, module: Module.DASHBOARD },
   { label: 'Pacientes', href: '/patients', icon: Users, module: Module.PATIENTS },
+  { label: 'Profesionales', href: '/professionals', icon: UserCheck, module: Module.PROFESSIONALS },
   { label: 'Turnos', href: '/appointments', icon: CalendarDays, module: Module.TURNS },
   { label: 'Odontograma', href: '/odontogram', icon: Smile, module: Module.ODONTOGRAM },
   { label: 'Plan de Tratamiento', href: '/treatment-plans', icon: FileText, module: Module.BUDGETS },

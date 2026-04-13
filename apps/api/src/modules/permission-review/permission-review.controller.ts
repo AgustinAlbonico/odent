@@ -76,6 +76,7 @@ export class PermissionReviewController {
     return this.reviewService.generateReviews(periodStart, periodEnd, {
       sub: user.sub,
       email: user.email,
+      tid: user.tid,
       ip: req.ip ?? 'unknown',
       userAgent: req.get('user-agent') ?? 'unknown',
     });
@@ -97,6 +98,7 @@ export class PermissionReviewController {
     return this.reviewService.confirmReview(id, body.notes, {
       sub: user.sub,
       email: user.email,
+      tid: user.tid,
       ip: req.ip ?? 'unknown',
       userAgent: req.get('user-agent') ?? 'unknown',
     });
@@ -118,6 +120,7 @@ export class PermissionReviewController {
     return this.reviewService.revokeReview(id, body.notes, {
       sub: user.sub,
       email: user.email,
+      tid: user.tid,
       ip: req.ip ?? 'unknown',
       userAgent: req.get('user-agent') ?? 'unknown',
     });

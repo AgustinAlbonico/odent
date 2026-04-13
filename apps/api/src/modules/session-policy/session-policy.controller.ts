@@ -16,6 +16,7 @@ interface AuthenticatedRequest {
   user?: {
     sub: string;
     email: string;
+    tid: string;
   };
   ip?: string;
   get(name: string): string | undefined;
@@ -31,7 +32,7 @@ export class SessionPolicyController {
     const user = req.user;
     if (!user) throw new UnauthorizedException();
 
-    return this.sessionPolicyService.getPolicy(user.sub);
+    return this.sessionPolicyService.getPolicy(user.sub, user.tid);
   }
 
   @Put()
@@ -50,6 +51,6 @@ export class SessionPolicyController {
       userEmail: user.email,
       ipAddress: req.ip ?? 'unknown',
       userAgent: req.get('user-agent') ?? 'unknown',
-    });
+    }, user.tid);
   }
 }
